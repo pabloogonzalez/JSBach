@@ -131,21 +131,94 @@ fnc_configurar()
 
 fnc_estat()
 {
-	if ip -br a show dev br0 &>/dev/null; then
-	     echo "$ACTIVAT"
-	     echo "subinterfaces"
-	     for LINIA in $(cat "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_CONF" | grep -v '^#'); do
-	     	VLANID=$(echo "$LINIA"|cut -d';' -f2)
-	     	ip -4 -br a show dev br0.$VLANID
-	     done
-	     echo " " 
-	     echo "TAG, UNTAG"	     
-	     bridge vlan show
+	# --- Check if Bridge is Active (br0 exists) ---
+	if ip link show br0 &>/dev/null; then
+		IS_ACTIVE=1
 	else
-	     echo "$DESACTIVAT"	
+		IS_ACTIVE=0
+	fi
+
+	# --- If no arguments, show FULL STATUS (HTML) ---
+	if [ $# -eq 0 ]; then
+		# Estado General
+		if [ "$IS_ACTIVE" -eq 1 ]; then
+			echo "<div style='margin-bottom: 20px;'>"
+			echo "  <span class='card-status status-active' style='font-size: 16px; padding: 6px 12px;'>✓ ACTIVAT</span>"
+			echo "</div>"
+			
+			echo "<div style='display: grid; grid-template-columns: 1fr; gap: 24px;'>"
+			
+			# Card 1: Configured VLANs
+			echo "  <div class='card' style='box-shadow: none; border: 1px solid #eee; background: #fff;'>"
+			echo "    <div class='card-header' style='background: #f8f9fa; border-bottom: 1px solid #eee;'><h3>VLANs Configurades</h3></div>"
+			echo "    <div class='card-body'>"
+			echo "      <table style='width:100%'>"
+			echo "        <tr><th>Nom</th><th>VID</th><th>Interfaç br0.X</th><th>IP / Subnet</th></tr>"
+			for linia in $(grep -v '#' "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_CONF"); do
+				nom=$(echo "$linia"|cut -d';' -f1)
+				vid=$(echo "$linia"|cut -d';' -f2)
+				ip=$(echo "$linia"|cut -d';' -f4)
+				
+				# Check if subinterface exists
+				IF_STATUS="<span style='color:#d93025'>✗ AVALL</span>"
+				if ip link show "br0.$vid" &>/dev/null; then
+					IF_STATUS="<span style='color:#188038'>✓ ACTIVA</span>"
+				fi
+				
+				echo "        <tr><td>$nom</td><td>$vid</td><td>br0.$vid ($IF_STATUS)</td><td>$ip</td></tr>"
+			done
+			echo "      </table>"
+			echo "    </div>"
+			echo "  </div>"
+
+			# Card 2: Interface Mapping (Tag/Untag)
+			echo "  <div class='card' style='box-shadow: none; border: 1px solid #eee; background: #fff;'>"
+			echo "    <div class='card-header' style='background: #f8f9fa; border-bottom: 1px solid #eee;'><h3>Associació d'Interfícies (Port Mapping)</h3></div>"
+			echo "    <div class='card-body'>"
+			echo "      <table style='width:100%'>"
+			echo "        <tr><th>Interfaç Física</th><th>PVID (Untagged)</th><th>Tagged VIDs</th></tr>"
+			for linia in $(grep -v '#' "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_IF"); do
+				iface=$(echo "$linia"|cut -d';' -f1)
+				pvid=$(echo "$linia"|cut -d';' -f2)
+				vids=$(echo "$linia"|cut -d';' -f3)
+				
+				if [ "$pvid" == "0" ]; then pvid="-"; fi
+				if [ "$vids" == "0" ]; then vids="-"; fi
+				
+				echo "        <tr><td><strong>$iface</strong></td><td>$pvid</td><td>$vids</td></tr>"
+			done
+			echo "      </table>"
+			echo "    </div>"
+			echo "  </div>"
+
+			echo "</div>" # End Grid
+
+		else
+			echo "<div style='margin-bottom: 20px;'>"
+			echo "  <span class='card-status status-inactive' style='font-size: 16px; padding: 6px 12px;'>✗ DESACTIVAT</span>"
+			echo "  <p style='margin-top:10px; color:#666;'>El bridge no està creat. Totes les VLANs estan inactives.</p>"
+			echo "</div>"
+		fi
+		
+		# --- RAW DETAILS (Hidden/Expandable) ---
+		echo "<details style='margin-top: 30px; border: 1px solid #eee; padding: 10px; border-radius: 4px;'>"
+		echo "<summary style='cursor:pointer; color:#1a73e8; font-weight:500;'>Veure detalls tècnics (bridge vlan raw)</summary>"
+		echo "<pre style='background:#f5f5f5; padding:10px; font-size:11px; overflow-x:auto;'>"
+		bridge vlan show
+		echo "---"
+		ip -br link show br0
+		echo "</pre>"
+		echo "</details>"
+		
+		exit 0
 	fi
 	
-	    
+	# --- Specific check for API (legacy) ---
+	if [ "$1" == "estat" ] && [ "$IS_ACTIVE" -eq 1 ]; then
+		echo "$ACTIVAT"
+	elif [ "$1" == "estat" ]; then
+		echo "$DESACTIVAT"
+	fi
 }
 
 

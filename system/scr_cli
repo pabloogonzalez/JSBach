@@ -29,7 +29,6 @@ do
 			    echo "CLI Error en l'argument $Comando $Arguments"
 			    ;;
 		esac	
+		echo "final"
 	fi
-	
-	echo "final"
 done;

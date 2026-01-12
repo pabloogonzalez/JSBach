@@ -45,17 +45,21 @@ if [ -n "$comand" ]; then
     echo "</pre>"
 fi
 
-# Bridge status isn't explicitly provided by fnc_estat (it was missing), so we rely on what we have or user actions.
-# The user asked to just create the interface.
+
+echo "<h3>Estat Actual</h3>"
+echo "<div>"
+$DIR/$PROJECTE/$DIR_SCRIPTS/client_srv_cli bridge estat
+echo "</div>"
 
 cat << EOF
-            <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px;">
+            <h3 style="margin-top: 32px;">Gestió del Servei</h3>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; padding-bottom: 24px; border-bottom: 1px solid #eee;">
                 <a href="/cgi-bin/bridge.cgi?comand=iniciar" class="btn">Iniciar Bridge</a>
                 <a href="/cgi-bin/bridge.cgi?comand=aturar" class="btn secondary" style="color: #d93025; border-color: #d93025;">Aturar Bridge</a>
             </div>
 
-            <h3 style="margin-top: 32px;">Configuració Avançada</h3>
-            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <h3 style="margin-top: 24px;">Configuració Avançada</h3>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px;">
                 <a href="/cgi-bin/bridge-configurar.cgi" class="btn secondary">Gestionar VLANs</a>
                 <a href="/cgi-bin/bridge-configurar-taguntag.cgi" class="btn secondary">Tag/Untag Interfícies</a>
             </div>
