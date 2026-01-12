@@ -17,8 +17,8 @@ get_status_html() {
 # Fetch statuses
 STATUS_WAN=$($DIR/$PROJECTE/$DIR_SCRIPTS/client_srv_cli ifwan estat)
 STATUS_ROUTE=$($DIR/$PROJECTE/$DIR_SCRIPTS/client_srv_cli enrutar estat)
-# For bridge/firewall, we just check output content crudely for now or improve script output later
-# Assuming client_srv_cli returns standard output we saw earlier
+STATUS_BRIDGE_RESUM=$($DIR/$PROJECTE/$DIR_SCRIPTS/client_srv_cli bridge resum)
+STATUS_FIREWALL_RESUM=$($DIR/$PROJECTE/$DIR_SCRIPTS/client_srv_cli tallafocs resum)
 
 echo "Content-type: text/html; charset=utf-8"
 echo ""
@@ -58,7 +58,7 @@ cat << EOF
             </div>
             <div class="card-body">
                 <p>Configuració de xarxa externa i estat de connexió.</p>
-                <p><strong>Estat:</strong> $STATUS_WAN</p>
+                <p style="margin-top:8px;"><strong>Estat:</strong> $STATUS_WAN</p>
             </div>
         </a>
 
@@ -70,7 +70,7 @@ cat << EOF
             </div>
             <div class="card-body">
                 <p>Gestió de NAT i reenviament de paquets.</p>
-                <div style="margin-top:8px;">$STATUS_ROUTE</div>
+                <div style="margin-top:8px;"><strong>Estat:</strong> $STATUS_ROUTE</div>
             </div>
         </a>
 
@@ -78,10 +78,11 @@ cat << EOF
         <a href="/cgi-bin/bridge.cgi" class="card">
             <div class="card-header">
                 <span class="card-title">🌉 Bridge</span>
-                <span class="card-status status-active">Gestió</span>
+                $(get_status_html "$STATUS_BRIDGE_RESUM")
             </div>
             <div class="card-body">
                 <p>Configuració de VLANs i interfícies pont.</p>
+                <div style="margin-top:8px;"><strong>Estat:</strong> $STATUS_BRIDGE_RESUM</div>
             </div>
         </a>
 
@@ -89,10 +90,11 @@ cat << EOF
         <a href="/cgi-bin/tallafocs.cgi" class="card">
             <div class="card-header">
                 <span class="card-title">🛡️ Tallafocs</span>
-                <span class="card-status status-active">Seguretat</span>
+                $(get_status_html "$STATUS_FIREWALL_RESUM")
             </div>
             <div class="card-body">
                 <p>Regles de filtratge i seguretat de la xarxa.</p>
+                <div style="margin-top:8px;"><strong>Estat:</strong> $STATUS_FIREWALL_RESUM</div>
             </div>
         </a>
     </div>

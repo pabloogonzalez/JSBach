@@ -222,11 +222,22 @@ fnc_estat()
 }
 
 
+fnc_resum()
+{
+	if ip link show br0 &>/dev/null; then
+		num_vlans=$(grep -v '#' "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_CONF" | wc -l)
+		num_ifaces=$(grep -v '#' "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_IF" | wc -l)
+		echo "<strong>ACTIVAT</strong> ($num_vlans VLANs, $num_ifaces Port Mappings)"
+	else
+		echo "DESACTIVAT"
+	fi
+}
+
 ######################################################################
 ###  MAIN
 ######################################################################
 
-MSG="falta [iniciar, aturar, configurar ,estat]"
+MSG="falta [iniciar, aturar, configurar ,estat, resum]"
 
 # Comprovem que hi hagi almenys un argument (la opció)
 if [ $# -lt 1 ]; then
@@ -250,6 +261,9 @@ case "$OPCIO_1" in
     ;;
   estat) 
     fnc_estat $@
+    ;;
+  resum)
+    fnc_resum $@
     ;;
   *)
     echo "$MSG"
