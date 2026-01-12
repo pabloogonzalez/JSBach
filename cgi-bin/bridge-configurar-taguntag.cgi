@@ -7,7 +7,7 @@ source $DIR/$PROJECTE/$DIR_CONF/$CONF_IFWAN
 # --- Funció per obtenir interfícies (sense lo, wan ni bridge) ---
 Interfaces_Ethernet() {
     for iface in $(ip -o link show | awk -F': ' '{print $2}'); do
-        if [[ "$iface" != "lo" ]] && [[ "$iface" != "$IFW_IFWAN" ]] && [[ $iface != br0* ]]; then
+        if [[ "$iface" != "lo" ]] && [[ "$iface" != "$IFW_IFWAN" ]] && [[ $iface != br0* ]] && [[ $iface != wl* ]]; then
              echo "$iface"
         fi
     done
