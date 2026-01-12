@@ -1,0 +1,269 @@
+#!/bin/bash
+
+source /usr/local/JSBach/conf/variables.conf
+
+######################################################################
+###  Funcions
+######################################################################
+
+fnc_iniciar()
+{
+	# Check if already active BEFORE clearing rules
+	if iptables -L ports_wls &>/dev/null; then
+		echo "Ja està activat"
+		exit 0
+	fi
+
+	fnc_aturar
+	echo "Iniciar"	
+		
+	
+	for linia in $(grep -v '#' "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_CONF"); do
+	    nom=$(echo "$linia"|cut -d';' -f1)
+	    ip=$(echo "$linia"|cut -d';' -f3)
+	    iptables -N $nom
+	    iptables -A FORWARD -s $ip -j $nom	    
+	done
+	
+	iptables -N ports_wls
+	for linia in $(grep -v '#' "$DIR/$PROJECTE/$DIR_CONF/$PORTS_WLS"); do
+	    protocol=$(echo "$linia"|cut -d';' -f1)
+	    num_port=$(echo "$linia"|cut -d';' -f2)
+	    iptables -A ports_wls -p $protocol --dport $num_port -j ACCEPT	    
+	done
+	iptables -A ports_wls -j DROP
+	
+}
+
+fnc_aturar()
+{
+	# Don't exit if already stopped, use return to continue if called from fnc_iniciar
+	if ! iptables -L ports_wls &>/dev/null; then
+		echo "Ja està parat"
+		return 0
+	fi
+
+	echo "Aturar"
+	iptables -F
+	iptables -X
+	iptables -P FORWARD ACCEPT
+	iptables -P INPUT ACCEPT
+	iptables -P OUTPUT ACCEPT	
+	
+	
+	resultat=$($DIR/$PROJECTE/$DIR_SCRIPTS/enrutar estat)
+
+	# Comprovem si conté la paraula "ACTIVAT"
+	echo "$resultat" | grep -q "$ACTIVAT"
+
+	if [ $? -eq 0 ]; then
+		iptables -t nat -F 
+		iptables -t nat -X
+		$DIR/$PROJECTE/$DIR_SCRIPTS/enrutar iniciar
+	else
+		iptables -t nat -F 
+		iptables -t nat -X
+	fi	
+}
+
+
+fnc_configurar()
+{	
+	
+	echo "Configuracio"
+	
+	ARG_1=$1
+	shift
+			
+	# Fem switch per executar la funció que toca
+	case "$ARG_1" in
+	  desconnectar)
+	        linia=$(cat "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_CONF"| grep ";$1;" )
+	        nom=$( echo $linia | cut -d';' -f1)
+	        vid=$( echo $linia | cut -d';' -f2)
+	        if [ -z "$nom" ]; then
+		    echo "Error no existeix vlan $1"
+		else
+		    iptables -F $nom
+		        # IPs privilegiades
+		     	for ipwls in $(grep -v '#' "$DIR/$PROJECTE/$DIR_CONF/$IPS_WLS"| grep "^$vid;"); do
+			    ip=$(echo "$ipwls"|cut -d';' -f2)
+			    mac=$(echo "$ipwls"|cut -d';' -f3)
+			    iptables -A $nom   -s $ip -m mac --mac-source $mac -j ACCEPT 
+			done
+
+		    iptables -A $nom -j DROP
+		fi
+	  	;;
+	  connectar)
+	        linia=$(cat "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_CONF"| grep ";$1;" )
+	        nom=$( echo $linia | cut -d';' -f1)
+	        if [ -z "$nom" ]; then
+		    	echo "Error no existeix vlan $1"
+		else
+			iptables -F $nom
+		fi	        
+	  	;;
+          connectar_port_wls)
+	        linia=$(cat "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_CONF"| grep ";$1;" )
+	        nom=$( echo $linia | cut -d';' -f1)
+	        vid=$( echo $linia | cut -d';' -f2)
+	        if [ -z "$nom" ]; then
+		    	echo "Error no existeix vlan $1"
+		else
+			iptables -F $nom
+		 	# IPs privilegiades
+			for ipwls in $(grep -v '#' "$DIR/$PROJECTE/$DIR_CONF/$IPS_WLS"| grep "^$vid;"); do
+			    ip=$(echo "$ipwls"|cut -d';' -f2)
+			    mac=$(echo "$ipwls"|cut -d';' -f3)
+			    iptables -A $nom   -s $ip -m mac --mac-source $mac -j ACCEPT 
+			done
+			
+			iptables -A $nom -j ports_wls
+			
+		fi	        
+	  	;;
+	  *)
+	        echo "Error  argumnets conectar, desconectar"
+	        ;;
+	esac	
+	
+}
+
+
+fnc_estat()
+{
+	# --- Check if Firewall is Active ---
+	if iptables -L ports_wls &>/dev/null; then
+		IS_ACTIVE=1
+	else
+		IS_ACTIVE=0
+	fi
+
+	# --- If no arguments, show FULL STATUS (HTML) ---
+	if [ $# -eq 0 ]; then
+		
+		# Estado General
+		if [ "$IS_ACTIVE" -eq 1 ]; then
+			echo "<div style='margin-bottom: 20px;'>"
+			echo "  <span class='card-status status-active' style='font-size: 16px; padding: 6px 12px;'>✓ ACTIVAT</span>"
+			echo "</div>"
+			
+			echo "<div style='display: grid; grid-template-columns: 1fr 1fr; gap: 20px;'>"
+			
+			# Column 1: VLAN Status (Rules)
+			echo "<div>"
+			echo "<h3>Estat de les VLANs</h3>"
+			echo "<table>"
+			echo "<tr><th>VLAN</th><th>IP Origen</th><th>Estat Filtrant</th></tr>"
+			
+			for linia in $(grep -v '#' "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_CONF"); do
+				nom=$(echo "$linia"|cut -d';' -f1)
+				ip=$(echo "$linia"|cut -d';' -f3)
+				
+				# Check if chain exists/is customized
+				# If chain exists and has DROP at end -> Blocked/Filtering
+				# If chain doesn't exist or is empty -> Open/Connected usually managed by 'connectar'
+				
+				STATUS_TEXT="<span style='color:green'>OBERTA</span>"
+				RULES_COUNT=$(iptables -L $nom 2>/dev/null | wc -l)
+				
+				# If we can't read chain, it might not exist properly or is flushed
+				if iptables -C $nom -j DROP 2>/dev/null; then
+				   STATUS_TEXT="<span style='color:red'>TANCADA (DROP)</span>"
+				elif iptables -C $nom -j ports_wls 2>/dev/null; then
+				    STATUS_TEXT="<span style='color:orange'>FILTRANT (WLS)</span>"
+				fi
+				
+				echo "<tr><td>$nom</td><td>$ip</td><td>$STATUS_TEXT</td></tr>"
+			done
+			echo "</table>"
+			echo "</div>"
+			
+			# Column 2: WLS Ports
+			echo "<div>"
+			echo "<h3>Ports WLS (Allowed)</h3>"
+			echo "<table>"
+			echo "<tr><th>Protocol</th><th>Port</th><th>Descripció</th></tr>"
+			
+			for linia in $(grep -v '#' "$DIR/$PROJECTE/$DIR_CONF/$PORTS_WLS"); do
+				proto=$(echo "$linia"|cut -d';' -f1)
+				port=$(echo "$linia"|cut -d';' -f2)
+				desc=$(echo "$linia"|cut -d';' -f3) # Assuming description might be 3rd field or just generic
+				if [ -z "$desc" ]; then desc="Servei Port $port"; fi
+				
+				echo "<tr><td>$proto</td><td>$port</td><td>$desc</td></tr>"
+			done
+			echo "</table>"
+			echo "</div>"
+			
+			echo "</div>" # End Grid
+
+		else
+			echo "<div style='margin-bottom: 20px;'>"
+			echo "  <span class='card-status status-inactive' style='font-size: 16px; padding: 6px 12px;'>✗ DESACTIVAT</span>"
+			echo "  <p style='margin-top:10px; color:#666;'>El tallafocs està apagat. Tot el trànsit està permès (ACCEPT) o gestionat per defecte.</p>"
+			echo "</div>"
+		fi
+		
+		# --- RAW DETAILS (Hidden/Expandable) ---
+		echo "<details style='margin-top: 30px; border: 1px solid #eee; padding: 10px; border-radius: 4px;'>"
+		echo "<summary style='cursor:pointer; color:#1a73e8; font-weight:500;'>Veure detalls tècnics (iptables raw)</summary>"
+		echo "<pre style='background:#f5f5f5; padding:10px; font-size:11px; overflow-x:auto;'>"
+		iptables -nvL --line-numbers
+		echo "</pre>"
+		echo "</details>"
+		
+		exit 0
+	fi
+	
+	# --- Check Specific VLAN Status (Legacy/API usage) ---
+	linia=$(cat "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_CONF"| grep ";$1;" )
+	nom=$( echo $linia | cut -d';' -f1)
+	if [ -z "$nom" ]; then
+		echo "Error no existeix vlan $1"
+	else
+		if iptables -C $nom -j DROP 2>/dev/null; then
+			echo "DESCONNECTADA"
+		else
+			echo "CONNECTADA"
+		fi 
+	fi
+}
+
+
+######################################################################
+###  MAIN
+######################################################################
+
+MSG="falta [iniciar, aturar, configurar ,estat]"
+
+# Comprovem que hi hagi almenys un argument (la opció)
+if [ $# -lt 1 ]; then
+  echo "$MSG"
+  exit 1
+fi
+
+OPCIO_1=$1
+shift
+
+# Fem switch per executar la funció que toca
+case "$OPCIO_1" in
+  iniciar)
+    fnc_iniciar  $@
+    ;;
+  aturar)
+    fnc_aturar	$@
+    ;; 
+  configurar) 
+    fnc_configurar $@
+    ;;
+  estat) 
+    fnc_estat $@
+    ;;
+  *)
+    echo "$MSG"
+    ;;
+esac
+
+

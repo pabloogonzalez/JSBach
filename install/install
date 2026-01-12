@@ -1,0 +1,35 @@
+#!/bin/bash
+
+
+####################################
+### instal·lar aplicacions
+####################################
+apt update
+apt install -y apache2
+a2enmod cgi
+service apache2 restart
+
+apt install -y curl
+apt install -y net-tools
+apt install -y expect 
+apt install -y iw
+
+
+####################################
+### desactivar NetworkManager
+####################################
+echo "desactivant NetworkManager"
+systemctl stop NetworkManager
+systemctl disable NetworkManager
+echo 
+
+####################################
+### Configurar Apache
+####################################
+echo "Configurant Apache..."
+ln -sf /usr/local/JSBach/conf/apache_jsbach.conf /etc/apache2/conf-available/jsbach.conf
+a2enconf jsbach
+service apache2 restart
+echo "Apache configurat."
+
+

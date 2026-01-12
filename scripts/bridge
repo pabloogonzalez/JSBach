@@ -1,0 +1,186 @@
+#!/bin/bash
+
+source /usr/local/JSBach/conf/variables.conf
+
+######################################################################
+###  Funcions
+######################################################################
+
+fnc_iniciar()
+{
+	if ip link show br0 > /dev/null 2>&1; then
+		echo "Ja està iniciat"
+		exit 0
+	fi
+
+	echo "Iniciar"
+	
+	### FALTA ESTAT BRIDGE PER NO INICIAR SI JA ESTA FUNCIONANT
+	
+	##CREAR  BRIDGE part interna
+	ip l a name br0 type bridge vlan_filtering 1
+	ip l s dev br0 up
+	
+	for LINIA in $(cat "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_CONF" | grep -v '^#'); do
+	    VLANID=$(echo "$LINIA"|cut -d';' -f2)
+	    VLANIP=$(echo "$LINIA"|cut -d';' -f4)
+	    ip l a l  br0 name br0.$VLANID  type vlan id $VLANID
+	    ip l s dev br0.$VLANID up
+	    ip a a dev br0.$VLANID $VLANIP
+	done
+	
+	#Bridge part LAN
+	bridge vlan del dev br0 vid 1 pvid untagged self
+	for LINIA in $(cat "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_IF" | grep -v '^#'); do
+	 	NOM_IF=$(echo "$LINIA"|cut -d';' -f1)
+ 	 	VLAN_UNTAG=$(echo "$LINIA"|cut -d';' -f2)
+	 	VLAN_TAG=$(echo "$LINIA"|cut -d';' -f3)
+	 	ip l s dev $NOM_IF master br0
+	 	ip l s dev $NOM_IF up
+	 	bridge vlan del dev $NOM_IF vid 1 pvid untagged	
+	 	if [ "$VLAN_UNTAG" != "0" ]; then
+	 		bridge vlan add dev $NOM_IF vid $VLAN_UNTAG pvid untagged
+	 		bridge vlan add dev br0 vid $VLAN_UNTAG self
+	 	fi
+	 	if [ "$VLAN_TAG" != "0" ]; then
+	 		for CAMP in ${VLAN_TAG//,/ }; do
+	 			bridge vlan add dev $NOM_IF vid $CAMP 
+	 			bridge vlan add dev br0 vid $CAMP self
+			done
+	 	fi	 	 	
+	done
+}
+
+fnc_aturar()
+{
+	if ! ip link show br0 > /dev/null 2>&1; then
+		echo "Ja està parat"
+		exit 0
+	fi
+	
+	echo "Aturar"
+	ip l d dev br0
+}
+
+
+fnc_configurar()
+{	
+
+	if [ $# -lt 1 ]; then
+		echo "falta  mostrar, guardar, esborrar"
+		exit 
+	fi
+	
+	ARG_1=$1
+	shift
+			
+	# Fem switch per executar la funció que toca
+	case "$ARG_1" in
+	  mostrar)
+	    if [ "$1" == "vlan" ]; then
+	    	cat "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_CONF"| grep -v '^#'
+	    fi
+	    if [ "$1" == "bridge" ]; then
+	    	cat "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_IF"| grep -v '^#'
+	    fi
+	    ;;
+	  guardar)
+	  		
+	    	OPCIO_2=$1
+		shift 
+		
+	    	case "$OPCIO_2" in
+	    		vlan)
+	    		RESULTAT=$(grep -v ";$2;" "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_CONF")
+	    		echo "$RESULTAT" > "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_CONF"
+	    		echo "$1;$2;$3;$4;" >> "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_CONF"
+	    		;;
+	    		bridge)
+	    		if [ "$#" -lt "3" ]; then
+	    			echo "falta nom_interfaç vid_untag (0 si no) vids-tag (0 si no)"
+	    			exit
+	    		fi
+	    		RESULTAT=$(grep -v "$1;" "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_IF")
+	    		echo "$RESULTAT" 
+	    		echo "$RESULTAT" > "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_IF"
+	    		echo "$1;$2;$3;" >> "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_IF"
+	    		;;
+	    		*)
+		    	echo "Error"
+		    	exit 1
+		    	;;
+		esac	    
+	    ;; 
+	  esborrar) 
+	    if [ "$1" == "vlan" ]; then
+	    	if [ "$2" -lt 3 ]; then
+	    		echo "no es pot esborrar la vlan $2"
+	    		exit 1
+	    	fi	    	
+	    	RESULTAT=$(grep -v ";$2;" "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_CONF")
+	    	echo "$RESULTAT" > "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_CONF"
+	    	echo "$RESULTAT" 
+	    fi
+	    ;;
+	  *)
+	    echo "Error"
+	    ;;
+	esac	
+}
+
+
+fnc_estat()
+{
+	if ip -br a show dev br0 &>/dev/null; then
+	     echo "$ACTIVAT"
+	     echo "subinterfaces"
+	     for LINIA in $(cat "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_CONF" | grep -v '^#'); do
+	     	VLANID=$(echo "$LINIA"|cut -d';' -f2)
+	     	ip -4 -br a show dev br0.$VLANID
+	     done
+	     echo " " 
+	     echo "TAG, UNTAG"	     
+	     bridge vlan show
+	else
+	     echo "$DESACTIVAT"	
+	fi
+	
+	    
+}
+
+
+######################################################################
+###  MAIN
+######################################################################
+
+MSG="falta [iniciar, aturar, configurar ,estat]"
+
+# Comprovem que hi hagi almenys un argument (la opció)
+if [ $# -lt 1 ]; then
+  echo "$MSG"
+  exit 1
+fi
+
+OPCIO_1=$1
+shift
+
+# Fem switch per executar la funció que toca
+case "$OPCIO_1" in
+  iniciar)
+    fnc_iniciar  $@
+    ;;
+  aturar)
+    fnc_aturar	$@
+    ;; 
+  configurar) 
+    fnc_configurar $@
+    ;;
+  estat) 
+    fnc_estat $@
+    ;;
+  *)
+    echo "$MSG"
+    ;;
+esac
+
+

@@ -1,0 +1,17 @@
+# System files
+.DS_Store
+Thumbs.db
+*~
+*.swp
+*.bak
+*.tmp
+
+# Logs
+*.log
+
+# User specific configuration (optional, if you want to keep default separate)
+# conf/*.conf
+
+# Backup folders
+JSBach_backup/
+*_backup/

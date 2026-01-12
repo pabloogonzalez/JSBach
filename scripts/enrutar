@@ -1,0 +1,94 @@
+#!/bin/bash
+
+source /usr/local/JSBach/conf/variables.conf
+source $DIR/$PROJECTE/$DIR_CONF/$CONF_IFWAN
+
+######################################################################
+###  Funcions
+######################################################################
+
+fnc_iniciar()
+{
+	# Check if WAN is active
+	WAN_STATUS=$($DIR/$PROJECTE/$DIR_SCRIPTS/ifwan estat)
+	if echo "$WAN_STATUS" | grep -q "DESACTIVAT"; then
+		echo "Error: La WAN no està activa. No es pot iniciar l'enrutament."
+		exit 1
+	fi
+
+	# Check if already active
+	if [ "$(cat /proc/sys/net/ipv4/ip_forward)" -eq 1 ] && iptables -t nat -C POSTROUTING -o "$IFW_IFWAN" -j MASQUERADE 2>/dev/null; then
+		echo "Ja està iniciat"
+		exit 0
+	fi
+
+	echo "Iniciar"	
+	echo 1 > /proc/sys/net/ipv4/ip_forward
+	iptables -t nat -A POSTROUTING -o $IFW_IFWAN -j MASQUERADE
+	
+}
+
+fnc_aturar()
+{
+	# Check if already stopped
+	if [ "$(cat /proc/sys/net/ipv4/ip_forward)" -eq 0 ]; then
+		# Check if iptables rule also missing implies fully stopped
+		if ! iptables -t nat -C POSTROUTING -o "$IFW_IFWAN" -j MASQUERADE 2>/dev/null; then
+			echo "Ja està parat"
+			exit 0
+		fi
+	fi
+
+	echo "Aturar"
+	echo 0 > /proc/sys/net/ipv4/ip_forward
+	# Clean up rule if it exists
+	while iptables -t nat -C POSTROUTING -o "$IFW_IFWAN" -j MASQUERADE 2>/dev/null; do
+		iptables -t nat -D POSTROUTING -o $IFW_IFWAN -j MASQUERADE
+	done
+}
+
+
+fnc_estat()
+{
+
+	if [ "$(cat /proc/sys/net/ipv4/ip_forward)" -eq 1 ] && iptables -t nat -C POSTROUTING -o "$IFW_IFWAN" -j MASQUERADE 2>/dev/null; then
+	    echo "<span style='color: green; font-weight: bold;'>✓ ACTIVAT</span><br>"
+	    echo "NAT: <strong>Habilitat</strong> (Interfaç: $IFW_IFWAN)"
+	else
+	    echo "<span style='color: red; font-weight: bold;'>✗ DESACTIVAT</span>"	
+	fi
+}
+
+
+######################################################################
+###  MAIN
+######################################################################
+
+MSG="falta [iniciar, aturar, configurar ,estat]"
+
+# Comprovem que hi hagi almenys un argument (la opció)
+if [ $# -lt 1 ]; then
+  echo "$MSG"
+  exit 1
+fi
+
+OPCIO_1=$1
+shift
+
+# Fem switch per executar la funció que toca
+case "$OPCIO_1" in
+  iniciar)
+    fnc_iniciar  $@
+    ;;
+  aturar)
+    fnc_aturar	$@
+    ;; 
+  estat) 
+    fnc_estat $@
+    ;;
+  *)
+    echo "$MSG"
+    ;;
+esac
+
+
