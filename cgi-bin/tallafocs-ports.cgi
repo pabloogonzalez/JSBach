@@ -3,13 +3,23 @@
 # Load configuration
 source /usr/local/JSBach/conf/variables.conf
 
+# URL Decode function
+urldecode() {
+    local i="${1//%/\\x}"
+    echo -e "${i//+/ }"
+}
+
 echo "Content-type: text/html; charset=utf-8"
 echo ""
 
 # Handle actions
-accio=$(echo "$QUERY_STRING" | sed -n 's/^.*accio=\([^&]*\).*$/\1/p')
-protocol=$(echo "$QUERY_STRING" | sed -n 's/^.*protocol=\([^&]*\).*$/\1/p')
-port=$(echo "$QUERY_STRING" | sed -n 's/^.*port=\([^&]*\).*$/\1/p')
+extract_param() {
+    echo "$QUERY_STRING" | grep -oE "(^|[&])$1=[^&]*" | cut -d= -f2
+}
+
+accio=$(urldecode "$(extract_param accio)")
+protocol=$(urldecode "$(extract_param protocol)")
+port=$(urldecode "$(extract_param port)")
 
 if [ "$accio" == "afegir" ] && [ -n "$protocol" ] && [ -n "$port" ]; then
     RESULTAT=$("$DIR"/"$PROJECTE"/"$DIR_SCRIPTS"/client_srv_cli tallafocs configurar afegir_port_wls "$protocol" "$port")

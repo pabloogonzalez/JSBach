@@ -56,6 +56,7 @@ cat << EOF
                 <a href="/cgi-bin/tallafocs.cgi?comand=aturar" class="btn secondary" style="color: #d93025; border-color: #d93025;">Aturar</a>
                 <a href="/cgi-bin/tallafocs-configuracio.cgi" class="btn secondary">Configurar Connexions</a>
                 <a href="/cgi-bin/tallafocs-ports.cgi" class="btn secondary">Gestionar Ports</a>
+                <a href="/cgi-bin/tallafocs-ips.cgi" class="btn secondary">Gestionar IPs</a>
             </div>
         </div>
     </div>

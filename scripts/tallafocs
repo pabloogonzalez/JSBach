@@ -157,8 +157,49 @@ fnc_configurar()
 			fi
 		fi
 		;;
+	  afegir_ip_wls)
+		# $1: vid, $2: ip, $3: mac
+		if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
+			echo "Error: falta vid, ip o mac"
+		else
+			# Add to file if not exists
+			if ! grep -q "^$1;$2;$3;" "$DIR/$PROJECTE/$DIR_CONF/$IPS_WLS"; then
+				echo "$1;$2;$3;" >> "$DIR/$PROJECTE/$DIR_CONF/$IPS_WLS"
+				echo "IP $2 ($3) afegida a la configuració (VID $1)"
+				# Apply to iptables if chain for nomad exists
+				linia=$(cat "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_CONF"| grep ";$1;" )
+				nom=$( echo $linia | cut -d';' -f1)
+				if [ -n "$nom" ] && iptables -L $nom &>/dev/null; then
+					# If chain is in filtering state (contains DROP or ports_wls), add rule
+					if iptables -C $nom -j DROP 2>/dev/null || iptables -C $nom -j ports_wls 2>/dev/null; then
+						iptables -I $nom 1 -s $2 -m mac --mac-source $3 -j ACCEPT
+						echo "Regla iptables afegida a la cadena $nom"
+					fi
+				fi
+			else
+				echo "L'entrada ja existeix"
+			fi
+		fi
+		;;
+	  eliminar_ip_wls)
+		# $1: vid, $2: ip, $3: mac
+		if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
+			echo "Error: falta vid, ip o mac"
+		else
+			# Remove from file
+			sed -i "/^$1;$2;$3;/d" "$DIR/$PROJECTE/$DIR_CONF/$IPS_WLS"
+			echo "IP $2 ($3) eliminada de la configuració (VID $1)"
+			# Remove from iptables if chain exists
+			linia=$(cat "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_CONF"| grep ";$1;" )
+			nom=$( echo $linia | cut -d';' -f1)
+			if [ -n "$nom" ] && iptables -L $nom &>/dev/null; then
+				iptables -D $nom -s $2 -m mac --mac-source $3 -j ACCEPT 2>/dev/null
+				echo "Regla iptables eliminada de la cadena $nom"
+			fi
+		fi
+		;;
 	  *)
-	        echo "Error  argumnets conectar, desconectar, connectar_port_wls, afegir_port_wls, eliminar_port_wls"
+	        echo "Error  argumnets conectar, desconectar, connectar_port_wls, afegir_port_wls, eliminar_port_wls, afegir_ip_wls, eliminar_ip_wls"
 	        ;;
 	esac	
 	

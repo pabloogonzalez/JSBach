@@ -5,7 +5,9 @@ source /usr/local/JSBach/conf/variables.conf
 
 while read ordre
 do
-	if [[ -n $ordre ]] then
+	if [[ -n $ordre ]]; then
+		# Log for debugging (can be removed later)
+		# echo "$(date) - RECV: $ordre" >> /tmp/jsbach_cli.log
 		
 		Comando=$(echo $ordre| awk '{print $1}') 
 		Arguments=$(echo $ordre| awk '{for (i=2; i<=NF; ++i)  printf $i " " }') 
