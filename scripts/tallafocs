@@ -104,7 +104,7 @@ fnc_configurar()
 			iptables -F $nom
 		fi	        
 	  	;;
-          connectar_port_wls)
+	  connectar_port_wls)
 	        linia=$(cat "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_CONF"| grep ";$1;" )
 	        nom=$( echo $linia | cut -d';' -f1)
 	        vid=$( echo $linia | cut -d';' -f2)
@@ -123,8 +123,42 @@ fnc_configurar()
 			
 		fi	        
 	  	;;
+	  afegir_port_wls)
+		# $1: protocol, $2: port
+		if [ -z "$1" ] || [ -z "$2" ]; then
+			echo "Error: falta protocol o port"
+		else
+			# Add to file if not exists
+			if ! grep -q "^$1;$2;" "$DIR/$PROJECTE/$DIR_CONF/$PORTS_WLS"; then
+				echo "$1;$2;" >> "$DIR/$PROJECTE/$DIR_CONF/$PORTS_WLS"
+				echo "Port $1 $2 afegit a la configuració"
+				# Apply to iptables if chain exists
+				if iptables -L ports_wls &>/dev/null; then
+					iptables -I ports_wls 1 -p $1 --dport $2 -j ACCEPT
+					echo "Regla iptables afegida"
+				fi
+			else
+				echo "El port ja existeix"
+			fi
+		fi
+		;;
+	  eliminar_port_wls)
+		# $1: protocol, $2: port
+		if [ -z "$1" ] || [ -z "$2" ]; then
+			echo "Error: falta protocol o port"
+		else
+			# Remove from file
+			sed -i "/^$1;$2;/d" "$DIR/$PROJECTE/$DIR_CONF/$PORTS_WLS"
+			echo "Port $1 $2 eliminat de la configuració"
+			# Remove from iptables if chain exists
+			if iptables -L ports_wls &>/dev/null; then
+				iptables -D ports_wls -p $1 --dport $2 -j ACCEPT 2>/dev/null
+				echo "Regla iptables eliminada"
+			fi
+		fi
+		;;
 	  *)
-	        echo "Error  argumnets conectar, desconectar"
+	        echo "Error  argumnets conectar, desconectar, connectar_port_wls, afegir_port_wls, eliminar_port_wls"
 	        ;;
 	esac	
 	

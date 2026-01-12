@@ -51,10 +51,11 @@ $DIR/$PROJECTE/$DIR_SCRIPTS/client_srv_cli tallafocs estat
 echo "</div>"
 
 cat << EOF
-            <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #eee;">
+            <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #eee; display: flex; gap: 12px; flex-wrap: wrap;">
                 <a href="/cgi-bin/tallafocs.cgi?comand=iniciar" class="btn">Iniciar</a>
                 <a href="/cgi-bin/tallafocs.cgi?comand=aturar" class="btn secondary" style="color: #d93025; border-color: #d93025;">Aturar</a>
                 <a href="/cgi-bin/tallafocs-configuracio.cgi" class="btn secondary">Configurar Connexions</a>
+                <a href="/cgi-bin/tallafocs-ports.cgi" class="btn secondary">Gestionar Ports</a>
             </div>
         </div>
     </div>
