@@ -1,0 +1,13 @@
+[Unit]
+Description=Sistema de configurarció router-switch sobre ubuntu JSBach
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/bin/bash /usr/local/JSBach/system/jsbach_srv
+Restart=always
+RestartSec=5
+User=root
+
+[Install]
+WantedBy=multi-user.target

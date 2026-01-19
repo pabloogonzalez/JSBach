@@ -97,6 +97,18 @@ cat << EOF
                 <div style="margin-top:8px;"><strong>Estat:</strong> $STATUS_FIREWALL_RESUM</div>
             </div>
         </a>
+
+        <!-- DMZ Card -->
+        <a href="/cgi-bin/dmz.cgi" class="card">
+            <div class="card-header">
+                <span class="card-title">📦 DMZ</span>
+                $(source /usr/local/JSBach/conf/variables.conf && get_status_html "$($DIR/$PROJECTE/$DIR_SCRIPTS/client_srv_cli dmz estat | head -n 1)")
+            </div>
+            <div class="card-body">
+                <p>Configuració de desmilitarització i obertura de ports cap a hosts interns.</p>
+                <div style="margin-top:8px;"><strong>Estat:</strong> $($DIR/$PROJECTE/$DIR_SCRIPTS/client_srv_cli dmz estat | head -n 1)</div>
+            </div>
+        </a>
     </div>
 </div>
 

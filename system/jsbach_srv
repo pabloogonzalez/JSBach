@@ -1,0 +1,28 @@
+ #!/bin/bash
+ 
+ source /usr/local/JSBach/conf/variables.conf
+ 
+######################################################################
+###  Funcions
+######################################################################
+ 
+
+fnc_inicia_configuracio()
+{
+	echo "fnc_inicia_configuracio"	
+}
+
+fnc_inicia_servidor()
+{
+	echo "fnc_inicia_servidor"
+	/bin/bash $DIR/$PROJECTE/$DIR_SYSTEM/srv_cli
+}
+
+
+######################################################################
+###  MAIN
+######################################################################
+
+fnc_inicia_configuracio
+fnc_inicia_servidor
+

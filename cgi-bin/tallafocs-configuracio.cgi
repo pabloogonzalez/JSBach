@@ -76,6 +76,87 @@ done
 cat << EOF
 </div>
 
+<div class="dashboard-grid" style="grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 24px;">
+    <!-- Ports Whitelist -->
+    <div class="card" style="box-shadow: none; border: 1px solid #eee;">
+        <div class="card-header">
+            <h3 class="card-title" style="font-size: 18px;">Ports Permesos (WLS Whitelist)</h3>
+        </div>
+        <div class="card-body">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="padding: 12px; border-bottom: 2px solid #eee;">Protocol</th>
+                        <th style="padding: 12px; border-bottom: 2px solid #eee;">Port</th>
+                        <th style="padding: 12px; border-bottom: 2px solid #eee;">Acció</th>
+                    </tr>
+                </thead>
+                <tbody>
+EOF
+
+while read linia; do
+    if [[ ! $linia =~ ^# ]] && [[ -n $linia ]]; then
+        proto=$(echo "$linia" | cut -d';' -f1)
+        port=$(echo "$linia" | cut -d';' -f2)
+        echo "<tr>"
+        echo "  <td style='padding: 10px; border-bottom: 1px solid #eee; text-transform: uppercase; font-weight: 600; color: #1a73e8;'>$proto</td>"
+        echo "  <td style='padding: 10px; border-bottom: 1px solid #eee;'>$port</td>"
+        echo "  <td style='padding: 10px; border-bottom: 1px solid #eee;'><a href='tallafocs-ports.cgi?accio=eliminar&protocol=$proto&port=$port' class='btn secondary' style='padding: 4px 8px; font-size: 12px; color: #d93025; border-color: #d93025;'>Eliminar</a></td>"
+        echo "</tr>"
+    fi
+done < "$DIR/$PROJECTE/$DIR_CONF/$PORTS_WLS"
+
+cat << EOF
+                </tbody>
+            </table>
+            <div style="margin-top: 16px;">
+                <a href="tallafocs-ports.cgi" class="btn" style="width: 100%; display: block; text-align: center; text-decoration: none;">Gestionar Ports</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- IPs Whitelist -->
+    <div class="card" style="box-shadow: none; border: 1px solid #eee;">
+        <div class="card-header">
+            <h3 class="card-title" style="font-size: 18px;">IPs sense restriccions</h3>
+        </div>
+        <div class="card-body">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="padding: 12px; border-bottom: 2px solid #eee;">VID</th>
+                        <th style="padding: 12px; border-bottom: 2px solid #eee;">IP</th>
+                        <th style="padding: 12px; border-bottom: 2px solid #eee;">MAC</th>
+                        <th style="padding: 12px; border-bottom: 2px solid #eee;">Acció</th>
+                    </tr>
+                </thead>
+                <tbody>
+EOF
+
+while read linia; do
+    if [[ ! $linia =~ ^# ]] && [[ -n $linia ]]; then
+        vid=$(echo "$linia" | cut -d';' -f1)
+        ip=$(echo "$linia" | cut -d';' -f2)
+        mac=$(echo "$linia" | cut -d';' -f3)
+        echo "<tr>"
+        echo "  <td style='padding: 10px; border-bottom: 1px solid #eee;'>$vid</td>"
+        echo "  <td style='padding: 10px; border-bottom: 1px solid #eee; font-family: monospace;'>$ip</td>"
+        echo "  <td style='padding: 10px; border-bottom: 1px solid #eee; font-family: monospace; font-size: 11px; color: #666;'>$mac</td>"
+        echo "  <td style='padding: 10px; border-bottom: 1px solid #eee;'><a href='tallafocs-ips.cgi?accio=eliminar&vid=$vid&ip=$ip&mac=$mac' class='btn secondary' style='padding: 4px 8px; font-size: 12px; color: #d93025; border-color: #d93025;'>Eliminar</a></td>"
+        echo "</tr>"
+    fi
+done < "$DIR/$PROJECTE/$DIR_CONF/$IPS_WLS"
+
+cat << EOF
+                </tbody>
+            </table>
+            <div style="margin-top: 16px;">
+                <a href="tallafocs-ips.cgi" class="btn" style="width: 100%; display: block; text-align: center; text-decoration: none;">Gestionar IPs</a>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div style="margin-top: 24px; text-align: right;">
     <a href="/cgi-bin/tallafocs.cgi" class="btn secondary">Tornar al Tallafocs</a>
 </div>

@@ -25,6 +25,9 @@ do
 			"tallafocs")
 			    $DIR/$PROJECTE/$DIR_SCRIPTS/tallafocs $Arguments
 			    ;;	
+			"dmz")
+			    $DIR/$PROJECTE/$DIR_SCRIPTS/dmz $Arguments
+			    ;;
 			*) 
 			    echo "CLI Error en l'argument $Comando $Arguments"
 			    ;;
