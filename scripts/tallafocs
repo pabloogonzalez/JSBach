@@ -24,6 +24,20 @@ fnc_iniciar()
 	    iptables -N $nom
 	    iptables -A FORWARD -s $ip -j $nom	    
 	done
+
+	# --- Chain: aislar ---
+	iptables -N aislar
+	iptables -A aislar -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+	iptables -A aislar -m conntrack --ctstate NEW -j DROP
+
+	# --- Link aislar to VLANs ---
+	# Check variables.conf for enabled isolation
+	if [ "$AISLAR_VLAN_ADMIN" == "true" ] && iptables -L vlan_Admin &>/dev/null; then
+		iptables -A vlan_Admin -d 10.0.1.0/24 -j aislar
+	fi
+	if [ "$AISLAR_VLAN_DMZ" == "true" ] && iptables -L vlan_DMZ &>/dev/null; then
+		iptables -A vlan_DMZ -s 10.0.2.0/24 -j aislar
+	fi
 	
 	iptables -N ports_wls
 	for linia in $(grep -v '#' "$DIR/$PROJECTE/$DIR_CONF/$PORTS_WLS"); do
@@ -198,8 +212,73 @@ fnc_configurar()
 			fi
 		fi
 		;;
+	  activar_aislar)
+		# $1: id (vlan id)
+		linia=$(cat "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_CONF"| grep ";$1;" )
+		nom=$( echo $linia | cut -d';' -f1)
+		
+		KEY=""
+		if [ "$nom" == "vlan_Admin" ]; then KEY="AISLAR_VLAN_ADMIN"; fi
+		if [ "$nom" == "vlan_DMZ" ]; then KEY="AISLAR_VLAN_DMZ"; fi
+		
+		if [ -n "$KEY" ]; then
+			# Update conf
+			if grep -q "^$KEY=" "$DIR/$PROJECTE/$DIR_CONF/variables.conf"; then
+				sed -i "s/^$KEY=.*/$KEY=true/" "$DIR/$PROJECTE/$DIR_CONF/variables.conf"
+			else
+				echo "$KEY=true" >> "$DIR/$PROJECTE/$DIR_CONF/variables.conf"
+			fi
+			echo "Aïllament ACTIVAT per $nom"
+			
+			# Apply immediate if active
+			if iptables -L $nom &>/dev/null; then
+				# Ensure aislar chain exists
+				if ! iptables -L aislar &>/dev/null; then
+					iptables -N aislar
+					iptables -A aislar -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+					iptables -A aislar -m conntrack --ctstate NEW -j DROP
+				fi
+
+				# Avoid dups
+				iptables -D $nom -d 10.0.1.0/24 -j aislar 2>/dev/null
+				iptables -D $nom -s 10.0.2.0/24 -j aislar 2>/dev/null
+				
+				if [ "$nom" == "vlan_Admin" ]; then iptables -A vlan_Admin -d 10.0.1.0/24 -j aislar; fi
+				if [ "$nom" == "vlan_DMZ" ]; then iptables -A vlan_DMZ -s 10.0.2.0/24 -j aislar; fi
+			fi
+		else
+			echo "Error: Aquesta VLAN no suporta aïllament"
+		fi
+		;;
+	  desactivar_aislar)
+		# $1: id (vlan id)
+		linia=$(cat "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_CONF"| grep ";$1;" )
+		nom=$( echo $linia | cut -d';' -f1)
+		
+		KEY=""
+		if [ "$nom" == "vlan_Admin" ]; then KEY="AISLAR_VLAN_ADMIN"; fi
+		if [ "$nom" == "vlan_DMZ" ]; then KEY="AISLAR_VLAN_DMZ"; fi
+		
+		if [ -n "$KEY" ]; then
+			# Update conf
+			if grep -q "^$KEY=" "$DIR/$PROJECTE/$DIR_CONF/variables.conf"; then
+				sed -i "s/^$KEY=.*/$KEY=false/" "$DIR/$PROJECTE/$DIR_CONF/variables.conf"
+			else
+				echo "$KEY=false" >> "$DIR/$PROJECTE/$DIR_CONF/variables.conf"
+			fi
+			echo "Aïllament DESACTIVAT per $nom"
+			
+			# Remove immediate if active
+			if iptables -L $nom &>/dev/null; then
+				if [ "$nom" == "vlan_Admin" ]; then iptables -D vlan_Admin -d 10.0.1.0/24 -j aislar 2>/dev/null; fi
+				if [ "$nom" == "vlan_DMZ" ]; then iptables -D vlan_DMZ -s 10.0.2.0/24 -j aislar 2>/dev/null; fi
+			fi
+		else
+			echo "Error: Aquesta VLAN no suporta aïllament"
+		fi
+		;;
 	  *)
-	        echo "Error  argumnets conectar, desconectar, connectar_port_wls, afegir_port_wls, eliminar_port_wls, afegir_ip_wls, eliminar_ip_wls"
+	        echo "Error  argumnets conectar, desconectar, connectar_port_wls, afegir_port_wls, eliminar_port_wls, afegir_ip_wls, eliminar_ip_wls, activar_aislar, desactivar_aislar"
 	        ;;
 	esac	
 	

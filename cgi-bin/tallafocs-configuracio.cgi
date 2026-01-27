@@ -65,6 +65,28 @@ for linia in $(grep -v '#' "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_CONF"); do
     echo "  <div style='display: flex; gap: 8px; flex-wrap: wrap;'>"
     if [ "$estat_vlan" == "CONNECTADA" ]; then
         echo "    <a href='tallafocs-conndeconn.cgi?id=$id&accio=desconnectar' class='btn secondary' style='color: var(--danger-color); border-color: var(--danger-color); flex: 1; text-align: center;'>DESCONNECTAR</a>"
+        
+        # --- Aïllament Toggle (Only for Admin & DMZ) ---
+        SHOW_AISLAR=false
+        AISLAR_ACTIVE=false
+        
+        if [ "$nom" == "vlan_Admin" ]; then
+            SHOW_AISLAR=true
+            if [ "$AISLAR_VLAN_ADMIN" == "true" ]; then AISLAR_ACTIVE=true; fi
+        fi
+        if [ "$nom" == "vlan_DMZ" ]; then
+            SHOW_AISLAR=true
+            if [ "$AISLAR_VLAN_DMZ" == "true" ]; then AISLAR_ACTIVE=true; fi
+        fi
+        
+        if [ "$SHOW_AISLAR" == "true" ]; then
+            if [ "$AISLAR_ACTIVE" == "true" ]; then
+               echo "    <a href='tallafocs-conndeconn.cgi?id=$id&accio=desactivar_aislar' class='btn secondary' style='flex: 1; text-align: center; border-color: #f59f00; color: #f59f00;'>DESACTIVAR AÏLLAMENT</a>"
+            else
+               echo "    <a href='tallafocs-conndeconn.cgi?id=$id&accio=activar_aislar' class='btn secondary' style='flex: 1; text-align: center;'>ACTIVAR AÏLLAMENT</a>"
+            fi
+        fi
+
     else
         echo "    <a href='tallafocs-conndeconn.cgi?id=$id&accio=connectar' class='btn' style='flex: 1; text-align: center;'>CONNECTAR</a>"
         echo "    <a href='tallafocs-conndeconn.cgi?id=$id&accio=connectar_port_wls' class='btn secondary' style='flex: 1; text-align: center;'>LIMITAR PORTS</a>"
