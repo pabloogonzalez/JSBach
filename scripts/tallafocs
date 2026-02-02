@@ -522,12 +522,144 @@ fnc_resum()
 	fi
 }
 
+######################################################################
+###  EBTABLES FUNCTIONS
+######################################################################
+
+fnc_ebtables_init()
+{
+	echo "Inicialitzant Ebtables..."
+	
+	# Default Policy
+	ebtables -P FORWARD ACCEPT
+	
+	# Flush specific rules if needed, or just ensure we don't duplicate
+	# ideally we flush FORWARD chain or specific user chain?
+	# For safety, we can just flush FORWARD if we own it, but better be careful.
+	# User request implies specific rules. 
+	
+	# We will rely on our state file to re-apply enabled rules
+	EBTABLES_STATE="$DIR/$PROJECTE/$DIR_CONF/ebtables_state.conf"
+	touch "$EBTABLES_STATE"
+
+	# Iterate over known interfaces from bridge_if.conf
+	# Format: interface name is first field
+	for linia in $(grep -v '#' "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_IF"); do
+		iface=$(echo "$linia" | cut -d';' -f1)
+		
+		# Check if enabled in state file
+		if grep -q "^$iface;ENABLED" "$EBTABLES_STATE"; then
+			# Apply rule if not exists
+			# Rule: ebtables -A FORWARD -i $iface ! -o br0 -j DROP
+			if ! ebtables -L FORWARD | grep -q "\-i $iface -o ! br0 -j DROP"; then
+				ebtables -A FORWARD -i $iface ! -o br0 -j DROP
+				echo "Regla aplicada per $iface"
+			fi
+		fi
+	done
+}
+
+fnc_ebtables_aturar()
+{
+	echo "Aturant Ebtables (Regles)..."
+	# Remove our specific rules. 
+	# We iterate interfaces and remove the specific drop rule
+	for linia in $(grep -v '#' "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_IF"); do
+		iface=$(echo "$linia" | cut -d';' -f1)
+		# Try delete until error
+		while ebtables -D FORWARD -i $iface ! -o br0 -j DROP 2>/dev/null; do :; done
+	done
+	echo "Regles ebtables netejades."
+}
+
+fnc_ebtables_toggle()
+{
+	# $1: interface name
+	iface=$1
+	if [ -z "$iface" ]; then echo "Error: Falta interfície"; return; fi
+
+	EBTABLES_STATE="$DIR/$PROJECTE/$DIR_CONF/ebtables_state.conf"
+	touch "$EBTABLES_STATE"
+	
+	# Check current state in file
+	if grep -q "^$iface;ENABLED" "$EBTABLES_STATE"; then
+		# IS ENABLED -> DISABLE
+		sed -i "/^$iface;ENABLED/d" "$EBTABLES_STATE"
+		# Remove rule
+		while ebtables -D FORWARD -i $iface ! -o br0 -j DROP 2>/dev/null; do :; done
+		echo "DESACTIVAT"
+	else
+		# IS DISABLED -> ENABLE
+		echo "$iface;ENABLED" >> "$EBTABLES_STATE"
+		# Add rule
+		ebtables -A FORWARD -i $iface ! -o br0 -j DROP
+		echo "ACTIVAT"
+	fi
+}
+
+fnc_ebtables_status()
+{
+	EBTABLES_STATE="$DIR/$PROJECTE/$DIR_CONF/ebtables_state.conf"
+	touch "$EBTABLES_STATE"
+	
+	echo "<h3>Estat Regles Ebtables (L2 Firewall)</h3>"
+	echo "<p class='subtitle'>Evita l'enviament de paquets entre interfícies físiques (Aïllament L2).</p>"
+	echo "<table class='table'>"
+	echo "<thead><tr><th>Interfície</th><th>Estat</th><th>Acció</th></tr></thead>"
+	echo "<tbody>"
+	
+	for linia in $(grep -v '#' "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_IF"); do
+		iface=$(echo "$linia" | cut -d';' -f1)
+		
+		# Check if enabled in file (Persistence)
+		is_enabled_file=0
+		if grep -q "^$iface;ENABLED" "$EBTABLES_STATE"; then is_enabled_file=1; fi
+		
+		# Check actual system state
+		is_active_sys=0
+		if ebtables -L FORWARD | grep -q "\-i $iface -o ! br0 -j DROP"; then is_active_sys=1; fi
+		
+		# Determine Display Status
+		if [ $is_enabled_file -eq 1 ]; then
+			STATUS_HTML="<span class='badge badge-success'>ACTIVAT</span>"
+			BTN_TXT="Desactivar"
+			BTN_CLASS="btn-danger"
+		else
+			STATUS_HTML="<span class='badge badge-secondary'>DESACTIVAT</span>"
+			BTN_TXT="Activar"
+			BTN_CLASS="btn-primary"
+		fi
+		
+		# Warning if mismatch
+		if [ $is_enabled_file -eq 1 ] && [ $is_active_sys -eq 0 ]; then
+			STATUS_HTML="$STATUS_HTML <span style='font-size:0.8em; color:orange;'>(No aplicat)</span>"
+		fi
+		
+		echo "<tr>"
+		echo "<td><strong>$iface</strong></td>"
+		echo "<td>$STATUS_HTML</td>"
+		echo "<td><a href='ebtables.cgi?action=toggle&iface=$iface' class='btn $BTN_CLASS btn-sm'>$BTN_TXT</a></td>"
+		echo "</tr>"
+	done
+	
+	echo "</tbody>"
+	echo "</table>"
+
+	# --- RAW DETAILS (Hidden/Expandable) ---
+	echo "<details style='margin-top: 30px; border: 1px solid #eee; padding: 10px; border-radius: 4px;'>"
+	echo "<summary style='cursor:pointer; color:#1a73e8; font-weight:500;'>Veure detalls tècnics (ebtables raw)</summary>"
+	echo "<pre style='background:#f5f5f5; padding:10px; font-size:11px; overflow-x:auto;'>"
+	ebtables -L --Lc --Ln
+	echo "</pre>"
+	echo "</details>"
+}
+
 
 ######################################################################
 ###  MAIN
 ######################################################################
 
-MSG="falta [iniciar, aturar, configurar ,estat, resum]"
+MSG="falta [iniciar, aturar, configurar ,estat, resum, ebtables_init, ebtables_aturar, ebtables_toggle, ebtables_status]"
 
 # Comprovem que hi hagi almenys un argument (la opció)
 if [ $# -lt 1 ]; then
@@ -536,6 +668,7 @@ if [ $# -lt 1 ]; then
 fi
 
 OPCIO_1=$1
+echo "DEBUG_ARG: '$OPCIO_1'"
 shift
 
 # Fem switch per executar la funció que toca
@@ -554,6 +687,18 @@ case "$OPCIO_1" in
     ;;
   resum)
     fnc_resum $@
+    ;;
+  ebtables_init)
+    fnc_ebtables_init $@
+    ;;
+  ebtables_aturar)
+    fnc_ebtables_aturar $@
+    ;;
+  ebtables_toggle)
+    fnc_ebtables_toggle $@
+    ;;
+  ebtables_status)
+    fnc_ebtables_status $@
     ;;
   *)
     echo "$MSG"

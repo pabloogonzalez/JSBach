@@ -43,6 +43,8 @@ cat << EOF
         <a href="/cgi-bin/enrutar.cgi" class="nav-link">Enrutament</a>
         <a href="/cgi-bin/bridge.cgi" class="nav-link">Bridge</a>
         <a href="/cgi-bin/tallafocs.cgi" class="nav-link">Tallafocs</a>
+        <a href="/cgi-bin/dmz.cgi" class="nav-link">DMZ</a>
+        <a href="/cgi-bin/ebtables.cgi" class="nav-link">Ebtables</a>
     </div>
 </nav>
 
@@ -107,6 +109,18 @@ cat << EOF
             <div class="card-body">
                 <p>Configuració de desmilitarització i obertura de ports cap a hosts interns.</p>
                 <div style="margin-top:8px;"><strong>Estat:</strong> $($DIR/$PROJECTE/$DIR_SCRIPTS/client_srv_cli dmz estat | head -n 1)</div>
+            </div>
+        </a>
+
+        <!-- Ebtables Card -->
+        <a href="/cgi-bin/ebtables.cgi" class="card">
+            <div class="card-header">
+                <span class="card-title">🧱 Ebtables</span>
+                <span class="card-status status-active">L2</span>
+            </div>
+            <div class="card-body">
+                <p>Aïllament d'interfícies físiques (Layer 2) i regles de pont.</p>
+                <div style="margin-top:8px;">Gestió de regles Ebtables</div>
             </div>
         </a>
     </div>
