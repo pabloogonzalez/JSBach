@@ -25,6 +25,35 @@ fnc_iniciar()
 	    iptables -A FORWARD -s $ip -j $nom	    
 	done
 
+
+	# --- INPUT Chains ---
+	iptables -N IN_BASE
+	iptables -N IN_ADMIN
+	iptables -N IN_DMZ
+	iptables -N IN_USERS
+
+	# --- Common Logic ---
+	iptables -A IN_BASE -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+
+	# --- INPUT Classification ---
+	iptables -A INPUT -s 10.0.1.0/24 -j IN_ADMIN
+	iptables -A INPUT -s 10.0.2.0/24 -j IN_DMZ
+	iptables -A INPUT -s 10.0.3.0/24 -j IN_USERS
+	iptables -A INPUT -s 10.0.4.0/24 -j IN_USERS
+
+	# --- VLAN Rules ---
+	# VLAN Admin
+	iptables -A IN_ADMIN -j IN_BASE
+	iptables -A IN_ADMIN -j ACCEPT
+
+	# VLAN DMZ (Default Drop)
+	iptables -A IN_DMZ -j IN_BASE
+
+	# VLAN Users (3 & 4)
+	iptables -A IN_USERS -j IN_BASE
+	iptables -A IN_USERS -p icmp -j ACCEPT
+	iptables -A IN_USERS -p udp --dport 67:68 -j ACCEPT
+
 	# --- Chain: aislar ---
 	iptables -N aislar
 	iptables -A aislar -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
@@ -46,6 +75,10 @@ fnc_iniciar()
 	    iptables -A ports_wls -p $protocol --dport $num_port -j ACCEPT	    
 	done
 	iptables -A ports_wls -j DROP
+
+	# --- Default Policy ---
+	iptables -P INPUT DROP
+
 	
 }
 
@@ -277,6 +310,43 @@ fnc_configurar()
 			echo "Error: Aquesta VLAN no suporta aïllament"
 		fi
 		;;
+	  desconnectar_input)
+		# $1: chain name (IN_ADMIN, IN_DMZ, IN_USERS)
+		CHAIN=$1
+		if iptables -L $CHAIN &>/dev/null; then
+			iptables -F $CHAIN
+			iptables -A $CHAIN -j DROP
+			echo "$CHAIN desconnectat (Bloquejat)"
+		else
+			echo "Error: Cadena $CHAIN no existeix"
+		fi
+		;;
+	  connectar_input)
+		# $1: chain name
+		CHAIN=$1
+		if iptables -L $CHAIN &>/dev/null; then
+			iptables -F $CHAIN
+			
+			# Re-apply default rules based on Chain Name
+			case "$CHAIN" in
+				IN_ADMIN)
+					iptables -A IN_ADMIN -j IN_BASE
+					iptables -A IN_ADMIN -j ACCEPT
+					;;
+				IN_DMZ)
+					iptables -A IN_DMZ -j IN_BASE
+					;;
+				IN_USERS)
+					iptables -A IN_USERS -j IN_BASE
+					iptables -A IN_USERS -p icmp -j ACCEPT
+					iptables -A IN_USERS -p udp --dport 67:68 -j ACCEPT
+					;;
+			esac
+			echo "$CHAIN connectat (Regles per defecte restaurades)"
+		else
+			echo "Error: Cadena $CHAIN no existeix"
+		fi
+		;;
 	  *)
 	        echo "Error  argumnets conectar, desconectar, connectar_port_wls, afegir_port_wls, eliminar_port_wls, afegir_ip_wls, eliminar_ip_wls, activar_aislar, desactivar_aislar"
 	        ;;
@@ -307,7 +377,7 @@ fnc_estat()
 			
 			# Column 1: VLAN Status (Rules)
 			echo "<div>"
-			echo "<h3>Estat de les VLANs</h3>"
+			echo "<h3>Estat de les VLANs (Traffic Forward)</h3>"
 			echo "<table>"
 			echo "<tr><th>VLAN</th><th>IP Origen</th><th>Estat Filtrant</th></tr>"
 			
@@ -315,14 +385,9 @@ fnc_estat()
 				nom=$(echo "$linia"|cut -d';' -f1)
 				ip=$(echo "$linia"|cut -d';' -f3)
 				
-				# Check if chain exists/is customized
-				# If chain exists and has DROP at end -> Blocked/Filtering
-				# If chain doesn't exist or is empty -> Open/Connected usually managed by 'connectar'
-				
 				STATUS_TEXT="<span style='color:green'>OBERTA</span>"
 				RULES_COUNT=$(iptables -L $nom 2>/dev/null | wc -l)
 				
-				# If we can't read chain, it might not exist properly or is flushed
 				if iptables -C $nom -j DROP 2>/dev/null; then
 				   STATUS_TEXT="<span style='color:red'>TANCADA (DROP)</span>"
 				elif iptables -C $nom -j ports_wls 2>/dev/null; then
@@ -331,6 +396,66 @@ fnc_estat()
 				
 				echo "<tr><td>$nom</td><td>$ip</td><td>$STATUS_TEXT</td></tr>"
 			done
+			echo "</table>"
+
+			# --- NEW SECTION: INPUT Rules Status ---
+			echo "<h3 style='margin-top:20px;'>Estat regles INPUT (Accés al router)</h3>"
+			echo "<table>"
+			echo "<tr><th>Zona</th><th>Política</th><th>Detalls</th><th>Accions</th></tr>"
+			
+			# Helper function for row generation (embedded logic)
+			print_row() {
+				CHAIN=$1
+				NAME=$2
+				DEFAULT_STATUS_HTML=$3
+				DEFAULT_DETAILS=$4
+				
+				# Check if explicitly blocked (DROP present)
+				# Note: IN_DMZ default is empty/IN_BASE, not DROP. IN_USERS default has accepts.
+				# If we find explicit DROP and it's the only/main rule, it's blocked.
+				# Simplified check: If chain contains DROP rule that is not the default implicit policy? 
+				# Actually, my desconnectar logic adds "-j DROP".
+				
+				is_blocked=0
+				if iptables -C $CHAIN -j DROP 2>/dev/null; then
+					is_blocked=1
+				fi
+
+				if [ "$is_blocked" -eq 1 ]; then
+					echo "<tr>"
+					echo "<td>$NAME</td>"
+					echo "<td><span style='color:red'>DESCONNECTAT</span></td>"
+					echo "<td>Accés bloquejat manualment</td>"
+					echo "<td><a href='/cgi-bin/tallafocs.cgi?comand=configurar+connectar_input+$CHAIN' class='btn small'>Connectar</a></td>"
+					echo "</tr>"
+				else
+					echo "<tr>"
+					echo "<td>$NAME</td>"
+					echo "<td>$DEFAULT_STATUS_HTML</td>"
+					echo "<td>$DEFAULT_DETAILS</td>"
+					echo "<td><a href='/cgi-bin/tallafocs.cgi?comand=configurar+desconnectar_input+$CHAIN' class='btn small secondary' style='color:#d93025; border-color:#d93025;'>Desconnectar</a></td>"
+					echo "</tr>"
+				fi
+			}
+
+			if iptables -L IN_ADMIN &>/dev/null; then
+				print_row "IN_ADMIN" "Admin (VLAN 1)" "<span style='color:green'>TOT PERMÈS</span>" "Accés complet"
+			else
+				echo "<tr><td>Admin (VLAN 1)</td><td>-</td><td>No actiu</td><td>-</td></tr>"
+			fi
+
+			if iptables -L IN_DMZ &>/dev/null; then
+				print_row "IN_DMZ" "DMZ (VLAN 2)" "<span style='color:red'>BLOQUEJAT</span>" "Excepte establertes"
+			else
+				echo "<tr><td>DMZ (VLAN 2)</td><td>-</td><td>No actiu</td><td>-</td></tr>"
+			fi
+
+			if iptables -L IN_USERS &>/dev/null; then
+				print_row "IN_USERS" "Usuaris (VLAN 3-4)" "<span style='color:orange'>LIMITAT</span>" "ICMP, DHCP (UDP 67-68)"
+			else
+				echo "<tr><td>Usuaris (VLAN 3-4)</td><td>-</td><td>No actiu</td><td>-</td></tr>"
+			fi
+			
 			echo "</table>"
 			echo "</div>"
 			
@@ -343,7 +468,7 @@ fnc_estat()
 			for linia in $(grep -v '#' "$DIR/$PROJECTE/$DIR_CONF/$PORTS_WLS"); do
 				proto=$(echo "$linia"|cut -d';' -f1)
 				port=$(echo "$linia"|cut -d';' -f2)
-				desc=$(echo "$linia"|cut -d';' -f3) # Assuming description might be 3rd field or just generic
+				desc=$(echo "$linia"|cut -d';' -f3) 
 				if [ -z "$desc" ]; then desc="Servei Port $port"; fi
 				
 				echo "<tr><td>$proto</td><td>$port</td><td>$desc</td></tr>"

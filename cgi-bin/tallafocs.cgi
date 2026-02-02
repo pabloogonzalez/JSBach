@@ -5,7 +5,7 @@ source /usr/local/JSBach/conf/variables.conf
 echo "Content-type: text/html; charset=utf-8"
 echo ""
 
-comand=$(echo "$QUERY_STRING" | sed -n 's/^.*comand=\([^&]*\).*$/\1/p')
+comand=$(echo "$QUERY_STRING" | sed -n 's/^.*comand=\([^&]*\).*$/\1/p' | sed 's/+/ /g' | sed 's/%20/ /g')
 
 cat << EOF
 <!DOCTYPE html>
