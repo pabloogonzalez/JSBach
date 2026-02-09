@@ -1,0 +1,130 @@
+#!/bin/bash
+
+source /usr/local/JSBach/conf/variables.conf
+
+######################################################################
+###  Funcions
+######################################################################
+
+fnc_estat() {
+	if [ ! -f "$DIR/$PROJECTE/$DIR_CONF/$SWITCHS" ]; then
+		return
+	fi
+
+	grep -v '#' "$DIR/$PROJECTE/$DIR_CONF/$SWITCHS" | while read linia; do
+		nom=$(echo "$linia" | cut -d';' -f1)
+		ip=$(echo "$linia" | cut -d';' -f2)
+		
+		# Ping with 1 packet, 1 second timeout
+		if ping -c 1 -W 1 "$ip" >/dev/null 2>&1; then
+		  echo "$nom $ip FUNCIONA"
+		else
+		  echo "$nom $ip NO_RESPON"
+		fi
+	done
+}
+
+fnc_taula_mac() {
+    local IP="$1"
+    local USER="$2"
+    local PASS="$3"
+
+    # Needs 'expect' package installed
+    expect << EOF | sed -n '/show mac address-table/,$p' | sed '1d' | sed '/#\|>/,$d'
+set timeout 10
+
+spawn ssh -o StrictHostKeyChecking=no $USER@$IP
+
+expect {
+    "*assword:*" {
+        send "$PASS\r"
+    }
+}
+
+# Wait for initial prompt (>)
+expect ">"
+send "enable\r"
+
+expect "*assword:*"
+send "$PASS\r"
+
+# Wait for privileged prompt (#)
+expect "#"
+send "show mac address-table\r"
+
+# Wait for prompt again
+expect "#"
+send "exit\r"
+
+expect eof
+EOF
+}
+
+fnc_configurar() {
+	if [ $# -lt 1 ]; then
+		echo "Error falta eliminar|afegir"
+		exit 1
+	fi
+	
+	OPCIO_1=$1
+	shift
+
+	case "$OPCIO_1" in
+		eliminar)
+			if [ $# -lt 2 ]; then
+				echo "Error falta nom_switch ip_switch "
+				exit 1
+			fi
+			Nom="$1"
+			IP="$2"
+			# Remove line starting with Nom;IP;
+			sed -i "/^${Nom};${IP};/d" "$DIR/$PROJECTE/$DIR_CONF/$SWITCHS"
+			echo "Deleted $Nom ($IP)"
+			;;
+		afegir)
+			if [ $# -lt 4 ]; then
+				echo "Error falta nom_switch ip_switch user pass"
+				exit 1
+			fi
+			# Append to file
+			echo "$1;$2;$3;$4" >> "$DIR/$PROJECTE/$DIR_CONF/$SWITCHS"
+			echo "Added $1 ($2)"
+			;;
+		*)
+			echo "$MSG"
+			;;
+	esac
+}
+
+
+######################################################################
+###  MAIN
+######################################################################
+
+MSG="falta [estat, configurar, taula_mac ]"
+
+
+# Check at least one argument
+if [ $# -lt 1 ]; then
+	echo "$MSG"
+	exit 1
+fi
+
+OPCIO_1=$1
+shift
+
+case "$OPCIO_1" in
+	estat)
+		fnc_estat $@
+		;;
+	configurar)
+		fnc_configurar $@
+		;;
+	taula_mac)
+		# Pass all remaining arguments to function (IP USER PASS)
+		fnc_taula_mac "$@"
+		;;	
+	*)
+		echo "$MSG"
+		;;
+esac

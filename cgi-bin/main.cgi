@@ -45,6 +45,7 @@ cat << EOF
         <a href="/cgi-bin/tallafocs.cgi" class="nav-link">Tallafocs</a>
         <a href="/cgi-bin/dmz.cgi" class="nav-link">DMZ</a>
         <a href="/cgi-bin/ebtables.cgi" class="nav-link">Ebtables</a>
+        <a href="/cgi-bin/switchs.cgi" class="nav-link">Switchs</a>
     </div>
 </nav>
 
@@ -121,6 +122,19 @@ cat << EOF
             <div class="card-body">
                 <p>Aïllament d'interfícies físiques (Layer 2) i regles de pont.</p>
                 <div style="margin-top:8px;">Gestió de regles Ebtables</div>
+            </div>
+        </a>
+        </a>
+        
+        <!-- Switchs Card -->
+        <a href="/cgi-bin/switchs.cgi" class="card">
+            <div class="card-header">
+                <span class="card-title">🖧 Switchs</span>
+                $(source /usr/local/JSBach/conf/variables.conf && get_status_html "$($DIR/$PROJECTE/$DIR_SCRIPTS/client_srv_cli switchs estat | grep 'FUNCIONA' | wc -l) Actius")
+            </div>
+            <div class="card-body">
+                <p>Gestió d'infraestructura de xarxa (Switchs).</p>
+                <div style="margin-top:8px;"><strong>Total:</strong> $($DIR/$PROJECTE/$DIR_SCRIPTS/client_srv_cli switchs estat | wc -l) Dispositiu(s)</div>
             </div>
         </a>
     </div>
