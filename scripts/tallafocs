@@ -25,6 +25,9 @@ fnc_iniciar()
 	    iptables -A FORWARD -s $ip -j $nom	    
 	done
 
+	# --- Common Forwarding Logic ---
+	iptables -A FORWARD -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+
 
 	# --- INPUT Chains ---
 	iptables -N IN_BASE
@@ -36,6 +39,8 @@ fnc_iniciar()
 	iptables -A IN_BASE -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
 
 	# --- INPUT Classification ---
+	iptables -A INPUT -i lo -j ACCEPT
+	iptables -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
 	iptables -A INPUT -s 10.0.1.0/24 -j IN_ADMIN
 	iptables -A INPUT -s 10.0.2.0/24 -j IN_DMZ
 	iptables -A INPUT -s 10.0.3.0/24 -j IN_USERS
@@ -53,6 +58,8 @@ fnc_iniciar()
 	iptables -A IN_USERS -j IN_BASE
 	iptables -A IN_USERS -p icmp -j ACCEPT
 	iptables -A IN_USERS -p udp --dport 67:68 -j ACCEPT
+	iptables -A IN_USERS -p udp --dport 53 -j ACCEPT
+	iptables -A IN_USERS -p tcp --dport 53 -j ACCEPT
 
 	# --- Chain: aislar ---
 	iptables -N aislar
@@ -118,6 +125,7 @@ fnc_configurar()
 {	
 	
 	echo "Configuracio"
+	echo "$(date) - fnc_configurar CALLED with args: $@" >> /tmp/tallafocs_debug.log
 	
 	ARG_1=$1
 	shift
@@ -668,7 +676,6 @@ if [ $# -lt 1 ]; then
 fi
 
 OPCIO_1=$1
-echo "DEBUG_ARG: '$OPCIO_1'"
 shift
 
 # Fem switch per executar la funció que toca
