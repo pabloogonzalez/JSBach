@@ -30,17 +30,22 @@ EOF
 
 # Parse Query String
 accio=$(echo "$QUERY_STRING" | sed -n 's/^.*accio=\([^&]*\).*$/\1/p')
-nom=$(echo "$QUERY_STRING" | sed -n 's/^.*nom=\([^&]*\).*$/\1/p' | sed 's/+/ /g' | sed 's/%20/ /g')
+# Replace spaces with underscores to prevent argument splitting in backend
+nom=$(echo "$QUERY_STRING" | sed -n 's/^.*nom=\([^&]*\).*$/\1/p' | sed 's/+/ /g' | sed 's/%20/ /g' | tr ' ' '_')
 ip=$(echo "$QUERY_STRING" | sed -n 's/^.*ip=\([^&]*\).*$/\1/p')
 user=$(echo "$QUERY_STRING" | sed -n 's/^.*user=\([^&]*\).*$/\1/p')
 pass=$(echo "$QUERY_STRING" | sed -n 's/^.*pass=\([^&]*\).*$/\1/p')
+protocol=$(echo "$QUERY_STRING" | sed -n 's/^.*protocol=\([^&]*\).*$/\1/p')
 
 # Execute Command via Client
 # Usage: client_srv_cli switchs configurar [eliminar|afegir] [args...]
 if [ "$accio" == "eliminar" ]; then
     $DIR/$PROJECTE/$DIR_SCRIPTS/client_srv_cli switchs configurar eliminar "$nom" "$ip"
 elif [ "$accio" == "afegir" ]; then
-    $DIR/$PROJECTE/$DIR_SCRIPTS/client_srv_cli switchs configurar afegir "$nom" "$ip" "$user" "$pass"
+    # Default to ssh if protocol is empty (safety)
+    if [ -z "$protocol" ]; then protocol="ssh"; fi
+    
+    $DIR/$PROJECTE/$DIR_SCRIPTS/client_srv_cli switchs configurar afegir "$nom" "$ip" "$user" "$pass" "$protocol"
 else
     echo "Acció desconeguda: $accio"
 fi

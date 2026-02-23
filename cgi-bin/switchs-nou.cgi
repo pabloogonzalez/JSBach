@@ -47,9 +47,17 @@ cat << EOF
                     <label for="ip" style="display:block; margin-bottom:5px; font-weight:500;">Adreça IP:</label>
                     <input type="text" id="ip" name="ip" required pattern="^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$" placeholder="192.168.1.10" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:4px;">
                 </div>
+                
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label for="protocol" style="display:block; margin-bottom:5px; font-weight:500;">Protocol de Gestió:</label>
+                    <select id="protocol" name="protocol" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:4px;">
+                        <option value="ssh" selected>SSH (Port 22)</option>
+                        <option value="telnet">Telnet (Port 23)</option>
+                    </select>
+                </div>
 
                 <div class="form-group" style="margin-bottom: 15px;">
-                    <label for="user" style="display:block; margin-bottom:5px; font-weight:500;">Usuari d'Administració (SSH):</label>
+                    <label for="user" style="display:block; margin-bottom:5px; font-weight:500;">Usuari d'Administració:</label>
                     <input type="text" id="user" name="user" required style="width:100%; padding:8px; border:1px solid #ddd; border-radius:4px;">
                 </div>
 
