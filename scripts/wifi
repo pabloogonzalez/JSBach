@@ -1,0 +1,117 @@
+#!/bin/bash
+
+source /usr/local/JSBach/conf/variables.conf
+
+######################################################################
+###  Variables
+######################################################################
+WIFI_CONF="wifi.conf"
+CONF_FILE="$DIR/$PROJECTE/$DIR_CONF/$WIFI_CONF"
+
+######################################################################
+###  Funcions
+######################################################################
+
+fnc_iniciar()
+{
+	if [ ! -f "$CONF_FILE" ]; then
+		echo "Error: Cal configurar la WiFi abans."
+		exit 1
+	fi
+	
+	# Carreguem SSID, Password i la interfície (Ex: wlan0)
+	source "$CONF_FILE"
+	
+	# Arxiu temporal per a hostapd
+	HOSTAPD_CONF="/tmp/jsbach_hostapd.conf"
+	
+	# Creem o sobreescribim la configuració de hostapd
+	cat <<EOF > "$HOSTAPD_CONF"
+interface=$WIFI_IFACE
+driver=nl80211
+ssid=$WIFI_SSID
+hw_mode=g
+channel=6
+macaddr_acl=0
+auth_algs=1
+ignore_broadcast_ssid=0
+wpa=2
+wpa_passphrase=$WIFI_PASSWD
+wpa_key_mgmt=WPA-PSK
+wpa_pairwise=TKIP
+rsn_pairwise=CCMP
+EOF
+	
+	# Aturem si ja hi ha algun hostapd actiu
+	killall hostapd 2>/dev/null
+	
+	# Iniciem hostapd en segon pla (Daemon)
+	hostapd "$HOSTAPD_CONF" -B > /dev/null 2>&1
+	
+	echo "Zona WiFi $WIFI_SSID iniciada correctament a l'interfície $WIFI_IFACE"
+}
+
+fnc_aturar()
+{
+	killall hostapd 2>/dev/null
+	echo "Zona WiFi aturada"
+}
+
+fnc_configurar()
+{	
+	if [ $# -lt 3 ]; then
+		echo "Falten dades. Ús correcte: configurar <interfície> <ssid> <password>"
+		exit 1
+	fi
+	
+	# Guardem els valors al fitxer de configuració
+	echo "WIFI_IFACE=\"$1\"" > "$CONF_FILE"
+	echo "WIFI_SSID=\"$2\"" >> "$CONF_FILE"
+	echo "WIFI_PASSWD=\"$3\"" >> "$CONF_FILE"
+	
+	echo "Configuracio de la Zona WiFi guardada"
+}
+
+fnc_estat()
+{
+	# Verifiquem si el procés hostapd està actiu
+	if pgrep -x "hostapd" > /dev/null; then
+		echo "$ACTIVAT"
+	else
+		echo "$DESACTIVAT"
+	fi
+}
+
+######################################################################
+###  MAIN
+######################################################################
+
+MSG="falta [iniciar, aturar, configurar, estat]"
+
+# Comprovem que hi hagi almenys un argument (la opció)
+if [ $# -lt 1 ]; then
+  echo "$MSG"
+  exit 1
+fi
+
+OPCIO_1=$1
+shift
+
+# Fem switch per executar la funció que toca
+case "$OPCIO_1" in
+  iniciar)
+    fnc_iniciar "$@"
+    ;;
+  aturar)
+    fnc_aturar	"$@"
+    ;; 
+  configurar) 
+    fnc_configurar "$@"
+    ;;
+  estat) 
+    fnc_estat "$@"
+    ;;
+  *)
+    echo "$MSG"
+    ;;
+esac

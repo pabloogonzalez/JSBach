@@ -19,6 +19,7 @@ STATUS_WAN=$($DIR/$PROJECTE/$DIR_SCRIPTS/client_srv_cli ifwan estat)
 STATUS_ROUTE=$($DIR/$PROJECTE/$DIR_SCRIPTS/client_srv_cli enrutar estat)
 STATUS_BRIDGE_RESUM=$($DIR/$PROJECTE/$DIR_SCRIPTS/client_srv_cli bridge resum)
 STATUS_FIREWALL_RESUM=$($DIR/$PROJECTE/$DIR_SCRIPTS/client_srv_cli tallafocs resum)
+STATUS_WIFI=$($DIR/$PROJECTE/$DIR_SCRIPTS/client_srv_cli wifi estat)
 
 echo "Content-type: text/html; charset=utf-8"
 echo ""
@@ -40,6 +41,7 @@ cat << EOF
     </a>
     <div class="nav-links">
         <a href="/cgi-bin/ifwan.cgi" class="nav-link">WAN</a>
+        <a href="/cgi-bin/wifi.cgi" class="nav-link">WiFi</a>
         <a href="/cgi-bin/enrutar.cgi" class="nav-link">Enrutament</a>
         <a href="/cgi-bin/bridge.cgi" class="nav-link">Bridge</a>
         <a href="/cgi-bin/tallafocs.cgi" class="nav-link">Tallafocs</a>
@@ -62,6 +64,18 @@ cat << EOF
             <div class="card-body">
                 <p>Configuració de xarxa externa i estat de connexió.</p>
                 <p style="margin-top:8px;"><strong>Estat:</strong> $STATUS_WAN</p>
+            </div>
+        </a>
+
+        <!-- WiFi Card -->
+        <a href="/cgi-bin/wifi.cgi" class="card">
+            <div class="card-header">
+                <span class="card-title">📶 WiFi</span>
+                $(get_status_html "$STATUS_WIFI")
+            </div>
+            <div class="card-body">
+                <p>Configuració del Punt d'Accés WiFi i seguretat.</p>
+                <div style="margin-top:8px;"><strong>Estat:</strong> $STATUS_WIFI</div>
             </div>
         </a>
 

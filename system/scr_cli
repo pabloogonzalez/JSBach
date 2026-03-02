@@ -31,6 +31,9 @@ do
 			"switchs")
 			    $DIR/$PROJECTE/$DIR_SCRIPTS/switchs $Arguments
 			    ;;
+			"wifi")
+			    $DIR/$PROJECTE/$DIR_SCRIPTS/wifi $Arguments
+			    ;;
 			*) 
 			    echo "CLI Error en l'argument $Comando $Arguments"
 			    ;;
