@@ -23,7 +23,7 @@ fnc_iniciar()
 	source "$CONF_FILE"
 	
 	# Arxiu temporal per a hostapd
-	HOSTAPD_CONF="/tmp/jsbach_hostapd.conf"
+	HOSTAPD_CONF="/etc/hostapd/hostapd.conf"
 	
 	# Creem o sobreescribim la configuració de hostapd
 	cat <<EOF > "$HOSTAPD_CONF"
@@ -38,15 +38,21 @@ ignore_broadcast_ssid=0
 wpa=2
 wpa_passphrase=$WIFI_PASSWD
 wpa_key_mgmt=WPA-PSK
-wpa_pairwise=TKIP
 rsn_pairwise=CCMP
 EOF
 	
 	# Aturem si ja hi ha algun hostapd actiu
 	killall hostapd 2>/dev/null
 	
+	# Assignem l'IP a la interfície i l'aixequem
+	ip link set dev $WIFI_IFACE up
+	ip addr add 10.0.100.1/24 dev $WIFI_IFACE 2>/dev/null
+	
 	# Iniciem hostapd en segon pla (Daemon)
 	hostapd "$HOSTAPD_CONF" -B > /dev/null 2>&1
+	
+	# Reiniciem dnsmasq per obligar-lo a llegir la nova IP ara que la targeta wlp5s0 existeix i té IP
+	systemctl restart dnsmasq
 	
 	echo "Zona WiFi $WIFI_SSID iniciada correctament a l'interfície $WIFI_IFACE"
 }
@@ -70,6 +76,9 @@ fnc_configurar()
 	echo "WIFI_PASSWD=\"$3\"" >> "$CONF_FILE"
 	
 	echo "Configuracio de la Zona WiFi guardada"
+    # Restart service applying changes by calling fnc_iniciar directly
+    fnc_iniciar
+    echo "Configuració aplicada i servei reiniciat."
 }
 
 fnc_estat()
@@ -82,11 +91,19 @@ fnc_estat()
 	fi
 }
 
+fnc_debug() {
+    ip addr > /tmp/debug_network.txt
+    brctl show >> /tmp/debug_network.txt
+    bridge vlan show >> /tmp/debug_network.txt
+    iptables-save >> /tmp/debug_network.txt
+    echo "Debug information written to /tmp/debug_network.txt"
+}
+
 ######################################################################
 ###  MAIN
 ######################################################################
 
-MSG="falta [iniciar, aturar, configurar, estat]"
+MSG="falta [iniciar, aturar, configurar, estat, debug]"
 
 # Comprovem que hi hagi almenys un argument (la opció)
 if [ $# -lt 1 ]; then
@@ -100,16 +117,19 @@ shift
 # Fem switch per executar la funció que toca
 case "$OPCIO_1" in
   iniciar)
-    fnc_iniciar "$@"
+    fnc_iniciar
     ;;
   aturar)
-    fnc_aturar	"$@"
+    fnc_aturar
     ;; 
   configurar) 
     fnc_configurar "$@"
     ;;
   estat) 
-    fnc_estat "$@"
+    fnc_estat
+    ;;
+  debug)
+    fnc_debug
     ;;
   *)
     echo "$MSG"
