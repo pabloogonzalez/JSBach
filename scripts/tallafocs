@@ -79,6 +79,8 @@ fnc_iniciar()
 	iptables -A IN_WIFI -p udp --dport 67:68 -j ACCEPT
 	iptables -A IN_WIFI -p udp --dport 53 -j ACCEPT
 	iptables -A IN_WIFI -p tcp --dport 53 -j ACCEPT
+	iptables -A IN_WIFI -p tcp --dport 80 -j ACCEPT
+	
 
 	# --- Chain: aislar ---
 	iptables -N aislar
