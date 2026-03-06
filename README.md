@@ -31,7 +31,7 @@ graph TD
 
     Internet((Internet / ISP)):::external <--> WAN[Interfaz WAN<br>Ej. enp6s0]:::external
     
-    subgraph JSBach Router (Sistema Linux)
+    subgraph "JSBach Router (Sistema Linux)"
         WAN <--> IPTable_NAT[NAT / Enmascaramiento<br>script: enrutar]:::router
         IPTable_NAT <--> IPTables_FW[Cortafuegos Global<br>script: tallafocs]:::router
         IPTables_FW <--> BR0[Switch Lógico Internal<br>script: bridge / br0]:::router
