@@ -81,6 +81,12 @@ fnc_iniciar()
 	iptables -A IN_WIFI -p tcp --dport 53 -j ACCEPT
 	iptables -A IN_WIFI -p tcp --dport 80 -j ACCEPT
 	
+	iptables -t nat -A PREROUTING -p tcp -s 10.0.100.0/24 --dport 80 -j DNAT --to 10.0.100.1:80
+	iptables -t nat -A PREROUTING -p tcp -s 10.0.3.0/24 --dport 80 -j DNAT --to 10.0.100.1:80
+	
+	# Reject HTTPS for Captive Portal fast fallback
+	iptables -A FORWARD -p tcp -s 10.0.100.0/24 --dport 443 -j REJECT --reject-with tcp-reset
+	iptables -A FORWARD -p tcp -s 10.0.3.0/24 --dport 443 -j REJECT --reject-with tcp-reset
 
 	# --- Chain: aislar ---
 	iptables -N aislar
@@ -166,6 +172,8 @@ fnc_configurar()
 			    ip=$(echo "$ipwls"|cut -d';' -f2)
 			    mac=$(echo "$ipwls"|cut -d';' -f3)
 			    iptables -A $nom   -s $ip -m mac --mac-source $mac -j ACCEPT 
+			    iptables -t nat -I PREROUTING 1 -p tcp -s $ip -j ACCEPT 2>/dev/null
+			    iptables -I FORWARD 1 -s $ip -j ACCEPT 2>/dev/null
 			done
 
 		    iptables -A $nom -j DROP
@@ -193,6 +201,8 @@ fnc_configurar()
 			    ip=$(echo "$ipwls"|cut -d';' -f2)
 			    mac=$(echo "$ipwls"|cut -d';' -f3)
 			    iptables -A $nom   -s $ip -m mac --mac-source $mac -j ACCEPT 
+			    iptables -t nat -I PREROUTING 1 -p tcp -s $ip -j ACCEPT 2>/dev/null
+			    iptables -I FORWARD 1 -s $ip -j ACCEPT 2>/dev/null
 			done
 			
 			iptables -A $nom -j ports_wls
@@ -249,6 +259,8 @@ fnc_configurar()
 					# If chain is in filtering state (contains DROP or ports_wls), add rule
 					if iptables -C $nom -j DROP 2>/dev/null || iptables -C $nom -j ports_wls 2>/dev/null; then
 						iptables -I $nom 1 -s $2 -m mac --mac-source $3 -j ACCEPT
+						iptables -t nat -I PREROUTING 1 -p tcp -s $2 -j ACCEPT 2>/dev/null
+						iptables -I FORWARD 1 -s $2 -j ACCEPT 2>/dev/null
 						echo "Regla iptables afegida a la cadena $nom"
 					fi
 				fi
@@ -270,6 +282,8 @@ fnc_configurar()
 			nom=$( echo $linia | cut -d';' -f1)
 			if [ -n "$nom" ] && iptables -L $nom &>/dev/null; then
 				iptables -D $nom -s $2 -m mac --mac-source $3 -j ACCEPT 2>/dev/null
+				iptables -t nat -D PREROUTING -p tcp -s $2 -j ACCEPT 2>/dev/null
+				iptables -D FORWARD -s $2 -j ACCEPT 2>/dev/null
 				echo "Regla iptables eliminada de la cadena $nom"
 			fi
 		fi
