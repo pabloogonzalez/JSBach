@@ -41,10 +41,10 @@ cat << EOF
     </a>
     <div class="nav-links">
         <a href="/cgi-bin/ifwan.cgi" class="nav-link">WAN</a>
-        <a href="/cgi-bin/wifi.cgi" class="nav-link">WiFi</a>
         <a href="/cgi-bin/enrutar.cgi" class="nav-link">Enrutament</a>
         <a href="/cgi-bin/bridge.cgi" class="nav-link">Bridge</a>
         <a href="/cgi-bin/tallafocs.cgi" class="nav-link">Tallafocs</a>
+        <a href="/cgi-bin/wifi.cgi" class="nav-link">WiFi</a>
         <a href="/cgi-bin/dmz.cgi" class="nav-link">DMZ</a>
         <a href="/cgi-bin/ebtables.cgi" class="nav-link">Ebtables</a>
         <a href="/cgi-bin/switchs.cgi" class="nav-link">Switchs</a>

@@ -25,6 +25,7 @@ echo '<nav class="navbar">
         <a href="/cgi-bin/enrutar.cgi" class="nav-link">Enrutament</a>
         <a href="/cgi-bin/bridge.cgi" class="nav-link">Bridge</a>
         <a href="/cgi-bin/tallafocs.cgi" class="nav-link">Tallafocs</a>
+        <a href="/cgi-bin/wifi.cgi" class="nav-link">WiFi</a>
     </div>
 </nav>'
 
