@@ -20,6 +20,7 @@ STATUS_ROUTE=$($DIR/$PROJECTE/$DIR_SCRIPTS/client_srv_cli enrutar estat)
 STATUS_BRIDGE_RESUM=$($DIR/$PROJECTE/$DIR_SCRIPTS/client_srv_cli bridge resum)
 STATUS_FIREWALL_RESUM=$($DIR/$PROJECTE/$DIR_SCRIPTS/client_srv_cli tallafocs resum)
 STATUS_WIFI=$($DIR/$PROJECTE/$DIR_SCRIPTS/client_srv_cli wifi estat)
+STATUS_DHCP=$($DIR/$PROJECTE/$DIR_SCRIPTS/client_srv_cli dhcp estat | head -n 1)
 
 echo "Content-type: text/html; charset=utf-8"
 echo ""
@@ -127,6 +128,18 @@ cat << EOF
             </div>
         </a>
 
+        <!-- DHCP Card -->
+        <a href="/cgi-bin/dhcp.cgi" class="card">
+            <div class="card-header">
+                <span class="card-title">🔌 DHCP</span>
+                $(get_status_html "$STATUS_DHCP")
+            </div>
+            <div class="card-body">
+                <p>Assignació automàtica d'IPs a usuaris i dispositius de xarxa via dnsmasq.</p>
+                <div style="margin-top:8px;"><strong>Estat:</strong> $STATUS_DHCP</div>
+            </div>
+        </a>
+
         <!-- Ebtables Card -->
         <a href="/cgi-bin/ebtables.cgi" class="card">
             <div class="card-header">
@@ -138,7 +151,6 @@ cat << EOF
                 <div style="margin-top:8px;">Gestió de regles Ebtables</div>
             </div>
         </a>
-        </a>
         
         <!-- Switchs Card -->
         <a href="/cgi-bin/switchs.cgi" class="card">
@@ -149,6 +161,18 @@ cat << EOF
             <div class="card-body">
                 <p>Gestió d'infraestructura de xarxa (Switchs).</p>
                 <div style="margin-top:8px;"><strong>Total:</strong> $($DIR/$PROJECTE/$DIR_SCRIPTS/client_srv_cli switchs estat | wc -l) Dispositiu(s)</div>
+            </div>
+        </a>
+
+        <!-- Port Mirroring Card -->
+        <a href="/cgi-bin/portmirror.cgi" class="card">
+            <div class="card-header">
+                <span class="card-title">🔍 Port Mirroring</span>
+                $(source /usr/local/JSBach/conf/variables.conf && get_status_html "$($DIR/$PROJECTE/$DIR_SCRIPTS/client_srv_cli portmirror estat | head -n 1)")
+            </div>
+            <div class="card-body">
+                <p>Còpia i anàlisi de trànsit de xarxa per inspecció.</p>
+                <div style="margin-top:8px;"><strong>Estat:</strong> $($DIR/$PROJECTE/$DIR_SCRIPTS/client_srv_cli portmirror estat | head -n 1)</div>
             </div>
         </a>
     </div>
