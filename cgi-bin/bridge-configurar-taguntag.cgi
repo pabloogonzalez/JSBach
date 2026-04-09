@@ -1,112 +1,91 @@
 #!/bin/bash
 
-# Load configuration
 source /usr/local/JSBach/conf/variables.conf
-source $DIR/$PROJECTE/$DIR_CONF/$CONF_IFWAN
-
-# --- Funció per obtenir interfícies (sense lo, wan ni bridge) ---
-Interfaces_Ethernet() {
-    for iface in $(ip -o link show | awk -F': ' '{print $2}'); do
-        if [[ "$iface" != "lo" ]] && [[ "$iface" != "$IFW_IFWAN" ]] && [[ $iface != br0* ]] && [[ $iface != wl* ]]; then
-             echo "$iface"
-        fi
-    done
-}
-
+source $DIR/$DIR_PROJECTE/$DIR_CONF/$IFWAN_CONF
+source $DIR/$DIR_PROJECTE/$DIR_SCRIPTS/funcions
 
 echo "Content-type: text/html; charset=utf-8"
 echo ""
 
-VLAN_DATA="$("$DIR"/"$PROJECTE"/"$DIR_SCRIPTS"/client_srv_cli bridge configurar mostrar bridge)"
+VLAN_DATA="$("$DIR"/"$DIR_PROJECTE"/"$DIR_SCRIPTS"/client_srv_cli bridge mostrar bridge)"
 
-cat << EOF
-<!DOCTYPE html>
-<html lang="ca">
+/bin/cat << EOM
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Configuració Tag-Untag Interface</title>
-    <link rel="stylesheet" href="/style.css">
-</head>
-<body>
+  <meta charset="utf-8">
+  <title>Hola món CGI</title>
+EOM
+ cat $DIR/$DIR_PROJECTE/$DIR_CGI/$CSS_CGI_BIN
+echo "</head><body>"
+ 
 
-<nav class="navbar">
-    <a href="/cgi-bin/main.cgi" class="navbar-brand">
-        <span>📶</span> Router Admin
-    </a>
-    <div class="nav-links">
-        <a href="/cgi-bin/ifwan.cgi" class="nav-link">WAN</a>
-        <a href="/cgi-bin/enrutar.cgi" class="nav-link">Enrutament</a>
-        <a href="/cgi-bin/bridge.cgi" class="nav-link active">Bridge</a>
-        <a href="/cgi-bin/tallafocs.cgi" class="nav-link">Tallafocs</a>
-        <a href="/cgi-bin/wifi.cgi" class="nav-link">WiFi</a>
-    </div>
-</nav>
+ESTAT=$($DIR/$DIR_PROJECTE/$DIR_SCRIPTS/client_srv_cli bridge estat)
 
-<div class="container">
-    <div class="card">
-        <div class="card-header">
-            <h2 class="card-title">Configuració d'Interfícies (Tag/Untag)</h2>
-        </div>
-        <div class="card-body">
+if echo "$ESTAT" | grep -q "^ACTIVAT"; then
+    echo "<h2>Per configurar el bridge primer ha d'estar desactivat</h2>"
 
-<table>
-<tr><th>Interfaç</th><th>UNTAG (PVID)</th><th>TAG (VIDs)</th><th style="width: 150px;">Accions</th></tr>
-EOF
+    echo "<table>"
+    echo "<tr><th>Interfaç</th><th>UNTAG</th><th>TAG</th></tr>"
+    for iface in $VLAN_DATA; do
+        VLAN_IF=$(echo "$iface" | cut -d';' -f1)
+        VLAN_UNTAG=$(echo "$iface" | cut -d';' -f2)
+        VLAN_TAG=$(echo "$iface" | cut -d';' -f3)
+        echo "<tr><td>$VLAN_IF</td>"
+        echo "<td>$VLAN_UNTAG</td>"
+        echo "<td>$VLAN_TAG</td>"
+    done
+    echo "</table>"
+    echo "<br>"
+    echo "<br>"
 
-for iface in $(Interfaces_Ethernet); do
-	# Check interface status
-	STATUS_COLOR="var(--text-secondary)"
-    STATUS_BG="#eee"
-	STATUS_TEXT="UNKNOWN"
-    
-    # Simple check for UP/DOWN
-	if ip link show "$iface" | grep -q "state UP"; then
-		STATUS_COLOR="var(--success-color)"
-        STATUS_BG="#e6f4ea"
-		STATUS_TEXT="ACTIVA"
-    else
-        STATUS_COLOR="var(--danger-color)"
-        STATUS_BG="#fce8e6"
-        STATUS_TEXT="INACTIVA"
-	fi
 
-	echo "<tr>"
-    echo "<td>"
-    echo "<div style='font-weight: 500;'>$iface</div>"
-    echo "<span style='font-size: 11px; padding: 2px 6px; border-radius: 10px; background: $STATUS_BG; color: $STATUS_COLOR;'>$STATUS_TEXT</span>"
-    echo "</td>"
-    
-	linia_int=$(echo "$VLAN_DATA" | grep -E "^${iface};")
-	VLAN_UNTAG=$(echo "$linia_int"|cut -d';' -f2)
-	
-    if [[ -z "$VLAN_UNTAG" ]]; then
-	    echo "<td>-</td>"
-	else
-	    echo "<td>$VLAN_UNTAG</td>"
-	fi
-	
-    VLAN_TAG=$(echo "$linia_int"|cut -d';' -f3)
-	if [[ -z "$VLAN_TAG" ]]; then
-	    echo "<td>-</td>"
-	else
-	    echo "<td>$VLAN_TAG</td>"
-	fi
-	
-    echo "<td><a href='/cgi-bin/bridge-modificar-taguntag.cgi?int=$iface' class='btn secondary' style='padding: 4px 10px; font-size: 12px;'>Modificar</a></td>"
-    echo "</tr>"
-done
 
-cat << EOF
-</table>
+    echo "<h3>Interfaces fora del bridge</h3>"
+    echo "<table>"
+    echo "<tr><th>Interfaç</th></tr>"
+    for iface in $(fnc_interfaces_ethernet | grep -vF "$IFW_IFWAN"); do
+        linia_int=$(echo "$VLAN_DATA" | grep -E "^${iface};")
+        VLAN_UNTAG=$(echo "$linia_int" | cut -d';' -f2)
+        if [[ -z "$VLAN_UNTAG" ]]; then
+            echo "<tr><td>$iface</td></tr>"
+        fi
+    done
+    echo "</table>"
 
-<div style="margin-top: 24px; text-align: right;">
-    <a href="/cgi-bin/bridge.cgi" class="btn secondary">Tornar al Bridge</a>
-</div>
+else
+    echo "<h2>Configuració Interfaces i Tag-Untag</h2>"
+    echo "<table>"
+    echo "<tr><th>Interfaç</th><th>UNTAG</th><th>TAG</th><th></th></tr>"
+    for iface in $VLAN_DATA; do
+        VLAN_IF=$(echo "$iface" | cut -d';' -f1)
+        VLAN_UNTAG=$(echo "$iface" | cut -d';' -f2)
+        VLAN_TAG=$(echo "$iface" | cut -d';' -f3)
+        echo "<tr><td>$VLAN_IF</td>"
+        echo "<td>$VLAN_UNTAG</td>"
+        echo "<td>$VLAN_TAG</td>"
+        echo "<td><button onclick=\"location.href='/cgi-bin/bridge-modificar-taguntag.cgi?int=$VLAN_IF'\">Modificar</button><button onclick=\"location.href='/cgi-bin/bridge.cgi?comand=configurar&argument=esborrar&accio=bridge&int=$VLAN_IF&retorn=bridge-configurar-taguntag.cgi'\">Esborrar interfaç del bridge</button></td></td></tr>"
+    done
+    echo "</table>"
+    echo "<br>"
+    echo "<br>"
 
-        </div>
-    </div>
-</div>
+
+
+    echo "<h3>Afegir interfaces al bridge</h3>"
+    echo "<table>"
+    echo "<tr><th>Interfaç</th><th></th></tr>"
+    for iface in $(fnc_interfaces_ethernet | grep -vF "$IFW_IFWAN"); do
+        linia_int=$(echo "$VLAN_DATA" | grep -E "^${iface};")
+        VLAN_UNTAG=$(echo "$linia_int" | cut -d';' -f2)
+        if [[ -z "$VLAN_UNTAG" ]]; then
+            echo "<tr><td>$iface</td><td><button onclick=\"location.href='/cgi-bin/bridge.cgi?comand=configurar&argument=guardar&accio=bridge&int=$iface&untag=0&tag=0&retorn=bridge-configurar-taguntag.cgi'\">Afegir al bridge</button></td></tr>"
+        fi
+    done
+    echo "</table>"
+fi
+/bin/cat << EOM
+
+
 </body>
 </html>
-EOF
+EOM

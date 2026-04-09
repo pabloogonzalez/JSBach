@@ -2,29 +2,20 @@
 
 source /usr/local/JSBach/conf/variables.conf
 
-
 echo "Content-type: text/html; charset=utf-8"
 echo ""
 
-
-QUERY_STRING=${QUERY_STRING:-$1}  
+QUERY_STRING=${QUERY_STRING:-$1}
 VID=$(echo "$QUERY_STRING" | sed -n 's/.*vid=\([0-9]*\).*/\1/p')
 
 echo "<html><head><title>Esborrar  VLAN</title>"
 echo "<meta charset='utf-8'>"
-echo "<style>
-body { font-family: sans-serif; margin: 20px; background: #f6f6f6; }
-h2 { background: #ddd; padding: 6px; }
-table { border-collapse: collapse; margin-bottom: 20px; width: 60%; }
-td, th { border: 1px solid #999; padding: 6px 10px; }
-th { background: #f0f0f0; text-align: left; }
-input { width: 95%; padding: 6px; font-size: 14px; }
-input.ip { width: 200px; }  /* Amplada específica per IP */
-button { padding: 6px 12px; margin-top: 10px; font-size: 14px; }
-</style>"
+
+cat $DIR/$DIR_PROJECTE/$DIR_CGI/$CSS_CGI_BIN
+
 echo "</head><body>"
 
-VLAN_DATA="$("$DIR"/"$PROJECTE"/"$DIR_SCRIPTS"/client_srv_cli bridge configurar mostrar vlan)"
+VLAN_DATA="$("$DIR"/"$DIR_PROJECTE"/"$DIR_SCRIPTS"/client_srv_cli bridge mostrar vlan)"
 mapfile -t VLANS <<< "$VLAN_DATA"
 
 FOUND_LINE=""
@@ -45,7 +36,10 @@ fi
 IFS=';' read -r nom vid subnet gw _ <<< "$FOUND_LINE"
 
 echo "<h2>Esborrar VLAN</h2>"
-echo "<form action='/cgi-bin/bridge-aplicar-esborrar.cgi' method='get'>"
+echo "<form action='/cgi-bin/bridge.cgi' method='get'>"
+echo "<input type='hidden' name='comand' value='configurar'>"
+echo "<input type='hidden' name='argument' value='esborrar'>"
+echo "<input type='hidden' name='accio' value='vlan'>"
 echo "<table>"
 echo "<tr><th>Nom</th><th>VID</th><th>IP/Subxarxa</th><th>IP/PE</th></tr>"
 echo "<tr>"
@@ -62,4 +56,3 @@ echo "<button type='submit'>Esborrar</button>"
 echo "</form>"
 
 echo "</body></html>"
-

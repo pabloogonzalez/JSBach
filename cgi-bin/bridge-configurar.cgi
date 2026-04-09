@@ -5,103 +5,136 @@ source /usr/local/JSBach/conf/variables.conf
 echo "Content-type: text/html; charset=utf-8"
 echo ""
 
-cat << EOF
-<!DOCTYPE html>
-<html lang="ca">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestió de VLANs</title>
-    <link rel="stylesheet" href="/style.css">
-</head>
-<body>
+echo "<html><head><title>Gestió de VLANs</title>"
+echo "<meta charset='utf-8'>"
 
-<nav class="navbar">
-    <a href="/cgi-bin/main.cgi" class="navbar-brand">
-        <span>📶</span> Router Admin
-    </a>
-    <div class="nav-links">
-        <a href="/cgi-bin/ifwan.cgi" class="nav-link">WAN</a>
-        <a href="/cgi-bin/enrutar.cgi" class="nav-link">Enrutament</a>
-        <a href="/cgi-bin/bridge.cgi" class="nav-link active">Bridge</a>
-        <a href="/cgi-bin/tallafocs.cgi" class="nav-link">Tallafocs</a>
-        <a href="/cgi-bin/wifi.cgi" class="nav-link">WiFi</a>
-        <a href="/cgi-bin/dmz.cgi" class="nav-link">DMZ</a>
-        <a href="/cgi-bin/ebtables.cgi" class="nav-link">Ebtables</a>
-    </div>
-</nav>
+cat $DIR/$DIR_PROJECTE/$DIR_CGI/$CSS_CGI_BIN
 
-<div class="container">
-    <div class="card">
-        <div class="card-header">
-            <h2 class="card-title">Gestió de VLANs</h2>
-        </div>
-        <div class="card-body">
+echo "</head><body>"
 
-EOF
 
-# Data retrieval
-VLAN_DATA="$("$DIR"/"$PROJECTE"/"$DIR_SCRIPTS"/client_srv_cli bridge configurar mostrar vlan)"
-mapfile -t VLANS <<< "$VLAN_DATA"
 
-if [ "${#VLANS[@]}" -lt 2 ]; then
-    echo "<div style='color: var(--danger-color); padding: 15px; border: 1px solid var(--danger-color); border-radius: 4px;'>"
-    echo "<b>Error:</b> No hi ha prou VLANs definides al sistema."
-    echo "</div>"
-    echo "</div></div></div></body></html>"
-    exit 0
-fi
+ESTAT=$($DIR/$DIR_PROJECTE/$DIR_SCRIPTS/client_srv_cli bridge estat)
 
-# -- VLAN ADMIN --
-echo "<h3>VLAN Administració</h3>"
-echo "<table>"
-echo "<tr><th>Nom</th><th>VID</th><th>Subxarxa</th><th>Gateway</th><th style='width: 150px;'>Accions</th></tr>"
-IFS=';' read -r nom vid subnet gw _ <<< "${VLANS[0]}"
-echo "<tr><td>$nom</td><td>$vid</td><td>$subnet</td><td>$gw</td>"
-echo "<td><a href='/cgi-bin/bridge-modificar.cgi?vid=$vid' class='btn secondary' style='padding: 4px 10px; font-size: 12px;'>Modificar</a></td></tr>"
-echo "</table>"
+if echo "$ESTAT" | grep -q "^ACTIVAT"; then
+    echo "<h2>Per configurar el bridge, primer ha d'estar desactivat</h2>"
 
-# -- VLAN DMZ --
-echo "<h3 style='margin-top: 30px;'>VLAN DMZ</h3>"
-echo "<table>"
-echo "<tr><th>Nom</th><th>VID</th><th>Subxarxa</th><th>Gateway</th><th style='width: 150px;'>Accions</th></tr>"
-IFS=';' read -r nom vid subnet gw _ <<< "${VLANS[1]}"
-echo "<tr><td>$nom</td><td>$vid</td><td>$subnet</td><td>$gw</td>"
-echo "<td><a href='/cgi-bin/bridge-modificar.cgi?vid=$vid' class='btn secondary' style='padding: 4px 10px; font-size: 12px;'>Modificar</a></td></tr>"
-echo "</table>"
+     # -------------------------------------------------------------------
+    # Aquí posem la comanda o fitxer que genera les VLANs
+    # -------------------------------------------------------------------
+    VLAN_DATA="$("$DIR"/"$DIR_PROJECTE"/"$DIR_SCRIPTS"/client_srv_cli bridge mostrar vlan)"
 
-# -- OTRAS VLANS --
-echo "<h3 style='margin-top: 30px;'>Altres VLANs</h3>"
-echo "<table>"
-echo "<tr><th>Nom</th><th>VID</th><th>Subxarxa</th><th>Gateway</th><th style='width: 200px;'>Accions</th></tr>"
+    # Llegim totes les línies en un array
+    mapfile -t VLANS <<< "$VLAN_DATA"
 
-count=0
-for ((i=2; i<${#VLANS[@]}; i++)); do
-    line="${VLANS[$i]}"
-    [ -z "$line" ] && continue
-    count=$((count+1))
-    IFS=';' read -r nom vid subnet gw _ <<< "$line"
+    # Comprovem que tinguem almenys dues línies
+    if [ "${#VLANS[@]}" -lt 2 ]; then
+        echo "<p><b>Error:</b> no hi ha prou VLANs definides.</p>"
+        echo "</body></html>"
+        exit 0
+    fi
+
+    # -------------------------------------------------------------------
+    # VLAN ADMINISTRACIÓ (primera línia)
+    # -------------------------------------------------------------------
+    echo "<h2>VLAN ADMINISTRACIÓ</h2>"
+    echo "<table>"
+    echo "<tr><th>Nom</th><th>VID</th><th>Subxarxa</th><th>Gateway</th></tr>"
+    IFS=';' read -r nom vid subnet gw _ <<< "${VLANS[0]}"
+    echo "<tr><td>$nom</td><td>$vid</td><td>$subnet</td><td>$gw</td></tr>"
+    echo "</table>"
+
+    # -------------------------------------------------------------------
+    # VLAN DMZ (segona línia)
+    # -------------------------------------------------------------------
+    echo "<h2>VLAN DMZ</h2>"
+    echo "<table>"
+    echo "<tr><th>Nom</th><th>VID</th><th>Subxarxa</th><th>Gateway</th></tr>"
+    IFS=';' read -r nom vid subnet gw _ <<< "${VLANS[1]}"
+    echo "<tr><td>$nom</td><td>$vid</td><td>$subnet</td><td>$gw</td></tr>"
+    echo "</table>"
+
+    # -------------------------------------------------------------------
+    # Altres VLANS (de la tercera en avant)
+    # -------------------------------------------------------------------
+    echo "<h2>VLANS</h2>"
+    echo "<table>"
+    echo "<tr><th>Nom</th><th>VID</th><th>Subxarxa</th><th>Gateway</th></tr>"
+
+    for ((i = 2; i < ${#VLANS[@]}; i++)); do
+        line="${VLANS[$i]}"
+        [ -z "$line" ] && continue
+        IFS=';' read -r nom vid subnet gw _ <<< "$line"
+        echo "<tr><td>$nom</td><td>$vid</td><td>$subnet</td><td>$gw</td></tr>"
+    done
+
+    echo "</table>"
+
+  
+else
+
+    # -------------------------------------------------------------------
+    # Aquí posem la comanda o fitxer que genera les VLANs
+    # -------------------------------------------------------------------
+    VLAN_DATA="$("$DIR"/"$DIR_PROJECTE"/"$DIR_SCRIPTS"/client_srv_cli bridge mostrar vlan)"
+
+    # Llegim totes les línies en un array
+    mapfile -t VLANS <<< "$VLAN_DATA"
+
+    # Comprovem que tinguem almenys dues línies
+    if [ "${#VLANS[@]}" -lt 2 ]; then
+        echo "<p><b>Error:</b> no hi ha prou VLANs definides.</p>"
+        echo "</body></html>"
+        exit 0
+    fi
+
+    # -------------------------------------------------------------------
+    # VLAN ADMINISTRACIÓ (primera línia)
+    # -------------------------------------------------------------------
+    echo "<h2>VLAN ADMINISTRACIÓ</h2>"
+    echo "<table>"
+    echo "<tr><th>Nom</th><th>VID</th><th>Subxarxa</th><th>Gateway</th><th>Accions</th></tr>"
+    IFS=';' read -r nom vid subnet gw _ <<< "${VLANS[0]}"
     echo "<tr><td>$nom</td><td>$vid</td><td>$subnet</td><td>$gw</td>"
-    echo "<td>"
-    echo "<a href='/cgi-bin/bridge-modificar.cgi?vid=$vid' class='btn secondary' style='padding: 4px 10px; font-size: 12px; margin-right: 5px;'>Modificar</a>"
-    echo "<a href='/cgi-bin/bridge-esborrar.cgi?vid=$vid' class='btn secondary' style='padding: 4px 10px; font-size: 12px; color: var(--danger-color); border-color: var(--danger-color);'>Esborrar</a>"
-    echo "</td></tr>"
-done
+    echo "<td><button onclick=\"location.href='/cgi-bin/bridge-modificar.cgi?vid=$vid&retorn=bridge-configurar.cgi'\">Modificar</button></td></tr>"
+    echo "</table>"
 
-if [ "$count" -eq 0 ]; then
-    echo "<tr><td colspan='5' style='text-align: center; color: #666;'>No hi ha VLANs addicionals configurades.</td></tr>"
+    # -------------------------------------------------------------------
+    # VLAN DMZ (segona línia)
+    # -------------------------------------------------------------------
+    echo "<h2>VLAN DMZ</h2>"
+    echo "<table>"
+    echo "<tr><th>Nom</th><th>VID</th><th>Subxarxa</th><th>Gateway</th><th>Accions</th></tr>"
+    IFS=';' read -r nom vid subnet gw _ <<< "${VLANS[1]}"
+    echo "<tr><td>$nom</td><td>$vid</td><td>$subnet</td><td>$gw</td>"
+    echo "<td><button onclick=\"location.href='/cgi-bin/bridge-modificar.cgi?vid=$vid&retorn=bridge-configurar.cgi'\">Modificar</button></td></tr>"
+    echo "</table>"
+
+    # -------------------------------------------------------------------
+    # Altres VLANS (de la tercera en avant)
+    # -------------------------------------------------------------------
+    echo "<h2>VLANS</h2>"
+    echo "<table>"
+    echo "<tr><th>Nom</th><th>VID</th><th>Subxarxa</th><th>Gateway</th><th>Accions</th></tr>"
+
+    for ((i = 2; i < ${#VLANS[@]}; i++)); do
+        line="${VLANS[$i]}"
+        [ -z "$line" ] && continue
+        IFS=';' read -r nom vid subnet gw _ <<< "$line"
+        echo "<tr><td>$nom</td><td>$vid</td><td>$subnet</td><td>$gw</td>"
+        echo "<td>"
+        echo "<button onclick=\"location.href='/cgi-bin/bridge-modificar.cgi?vid=$vid&retorn=bridge-configurar.cgi'\">Modificar</button>"
+        echo "<button onclick=\"location.href='/cgi-bin/bridge-esborrar.cgi?vid=$vid&retorn=bridge-configurar.cgi'\">Esborrar</button>"
+        echo "</td></tr>"
+    done
+
+    echo "</table>"
+
+    # -------------------------------------------------------------------
+    # Botó final
+    # -------------------------------------------------------------------
+    echo "<button onclick=\"location.href='/cgi-bin/bridge-nova-vlan.cgi'\">Crear nova VLAN</button>"
+
 fi
-echo "</table>"
 
-echo "<div style='margin-top: 24px; text-align: right;'>"
-echo "<a href='/cgi-bin/bridge-nova-vlan.cgi' class='btn'>+ Crear Nova VLAN</a>"
-echo "<a href='/cgi-bin/bridge.cgi' class='btn secondary' style='margin-left: 10px;'>Tornar al Bridge</a>"
-echo "</div>"
-
-cat << EOF
-        </div>
-    </div>
-</div>
-</body>
-</html>
-EOF
+echo "</body></html>"

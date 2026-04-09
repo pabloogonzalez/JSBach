@@ -5,70 +5,55 @@ source /usr/local/JSBach/conf/variables.conf
 echo "Content-type: text/html; charset=utf-8"
 echo ""
 
-# Get command from query string
-comand=$(echo "$QUERY_STRING" | sed -n 's/^.*comand=\([^&]*\).*$/\1/p')
-
-cat << EOF
-<!DOCTYPE html>
-<html lang="ca">
+/bin/cat << EOM
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestió WiFi</title>
-    <link rel="stylesheet" href="/style.css">
+  <meta charset="utf-8">
+  <title>Hola món CGI</title>
+EOM
+cat $DIR/$DIR_PROJECTE/$DIR_CGI/$CSS_CGI_BIN
+/bin/cat << EOM
 </head>
 <body>
+EOM
 
-<nav class="navbar">
-    <a href="/cgi-bin/main.cgi" class="navbar-brand">
-        <span>📶</span> Router Admin
-    </a>
-    <div class="nav-links">
-        <a href="/cgi-bin/ifwan.cgi" class="nav-link">WAN</a>
-        <a href="/cgi-bin/wifi.cgi" class="nav-link active">WiFi</a>
-        <a href="/cgi-bin/enrutar.cgi" class="nav-link">Enrutament</a>
-        <a href="/cgi-bin/bridge.cgi" class="nav-link">Bridge</a>
-        <a href="/cgi-bin/tallafocs.cgi" class="nav-link">Tallafocs</a>
-        <a href="/cgi-bin/dmz.cgi" class="nav-link">DMZ</a>
-        <a href="/cgi-bin/ebtables.cgi" class="nav-link">Ebtables</a>
-    </div>
-</nav>
+comand=$(echo "$QUERY_STRING" | sed -n 's/^.*comand=\([^&]*\).*$/\1/p')
 
-<div class="container">
-    <div class="card">
-        <div class="card-header">
-            <h2 class="card-title">Gestió de la Zona WiFi (Hostapd)</h2>
-        </div>
-        <div class="card-body">
-EOF
+case "$comand" in
+    "iniciar")
+        echo "<h2>WIFI $comand</h2>"
+        echo "<pre>$("$DIR"/"$DIR_PROJECTE"/"$DIR_SCRIPTS"/client_srv_cli wifi iniciar) </pre>"
+        ;;
+    "aturar")
+        echo "<h2>WIFI $comand</h2>"
+        echo "<pre>$("$DIR"/"$DIR_PROJECTE"/"$DIR_SCRIPTS"/client_srv_cli wifi aturar) </pre>"
+        ;;
+    "guardar")
+        echo "<h2>WIFI $comand configuracio</h2>"
+        interface=$(echo "$QUERY_STRING" | sed -n 's/^.*interface=\([^&]*\).*$/\1/p')
+        ip=$(echo "$QUERY_STRING" | sed -n 's/^.*ip=\([^&]*\).*$/\1/p')
+        ip=$(printf '%b' "${ip//%/\\x}")
+        driver=$(echo "$QUERY_STRING" | sed -n 's/^.*driver=\([^&]*\).*$/\1/p')
+        ssid=$(echo "$QUERY_STRING" | sed -n 's/^.*wifi_ssid=\([^&]*\).*$/\1/p')
+        hw_mode=$(echo "$QUERY_STRING" | sed -n 's/^.*hw_mode=\([^&]*\).*$/\1/p')
+        channel=$(echo "$QUERY_STRING" | sed -n 's/^.*channel=\([^&]*\).*$/\1/p')
+        auth_algs=$(echo "$QUERY_STRING" | sed -n 's/^.*auth_algs=\([^&]*\).*$/\1/p')
+        ignore_broadcast_ssid=$(echo "$QUERY_STRING" | sed -n 's/^.*ignore_broadcast_ssid=\([^&]*\).*$/\1/p')
+        ap_isolate=$(echo "$QUERY_STRING" | sed -n 's/^.*ap_isolate=\([^&]*\).*$/\1/p')
+        wpa=$(echo "$QUERY_STRING" | sed -n 's/^.*wpa=\([^&]*\).*$/\1/p')
+        wpa_passphrase=$(echo "$QUERY_STRING" | sed -n 's/^.*wpa_passphrase=\([^&]*\).*$/\1/p')
+        wpa_key_mgmt=$(echo "$QUERY_STRING" | sed -n 's/^.*wpa_key_mgmt=\([^&]*\).*$/\1/p')
+        rsn_pairwise=$(echo "$QUERY_STRING" | sed -n 's/^.*rsn_pairwise=\([^&]*\).*$/\1/p')
+        echo "<pre>$("$DIR"/"$DIR_PROJECTE"/"$DIR_SCRIPTS"/client_srv_cli wifi configurar guardar_wifi_ip $ip) </pre>"
+        echo "<pre>$("$DIR"/"$DIR_PROJECTE"/"$DIR_SCRIPTS"/client_srv_cli wifi configurar guardar_wifi_hostapd_conf $interface $driver $ssid $hw_mode $channel $auth_algs $ignore_broadcast_ssid $ap_isolate $wpa $wpa_passphrase $wpa_key_mgmt $rsn_pairwise) </pre>"
+        ;;
+    "estat")
+        echo "<h2>WIFI $comand</h2>"
+        echo "<pre>$("$DIR"/"$DIR_PROJECTE"/"$DIR_SCRIPTS"/client_srv_cli wifi estat) </pre>"
+        ;;
+esac
 
-if [ -n "$comand" ]; then
-    echo "<h3>Resultat: $comand</h3>"
-    echo "<pre>"
-    $DIR/$PROJECTE/$DIR_SCRIPTS/client_srv_cli wifi $comand
-    echo "</pre>"
-fi
-
-echo "<h3>Estat Actual</h3>"
-echo "<div style='margin-bottom: 24px; padding: 12px; border-radius: 6px; background: #f8f9fa;'>"
-estat=$($DIR/$PROJECTE/$DIR_SCRIPTS/client_srv_cli wifi estat)
-if [ "$estat" == "$ACTIVAT" ]; then
-    echo "<b><span style='color: #0f9d58;'>●</span> WiFi Activat</b>"
-else
-    echo "<b><span style='color: #d93025;'>●</span> WiFi Desactivat</b>"
-fi
-echo "</div>"
-
-cat << EOF
-            <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #eee;">
-                <a href="/cgi-bin/wifi.cgi?comand=iniciar" class="btn">Iniciar</a>
-                <a href="/cgi-bin/wifi.cgi?comand=aturar" class="btn secondary" style="color: #d93025; border-color: #d93025;">Aturar</a>
-                <a href="/cgi-bin/wifi-configurar.cgi" class="btn secondary">Configurar</a>
-            </div>
-        </div>
-    </div>
-</div>
-
+/bin/cat << EOM
 </body>
 </html>
-EOF
+EOM

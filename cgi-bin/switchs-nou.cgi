@@ -1,80 +1,33 @@
 #!/bin/bash
 
-# Load configuration
 source /usr/local/JSBach/conf/variables.conf
 
 echo "Content-type: text/html; charset=utf-8"
-echo "Cache-Control: no-cache, no-store, must-revalidate"
-echo "Pragma: no-cache"
-echo "Expires: 0"
 echo ""
 
-cat << EOF
-<!DOCTYPE html>
-<html lang="ca">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Afegir Switch</title>
-    <link rel="stylesheet" href="/style.css">
-</head>
-<body>
+echo "<html><head><title>Crear VLAN</title>"
+echo "<meta charset='utf-8'>"
 
-<nav class="navbar">
-    <a href="/cgi-bin/main.cgi" class="navbar-brand">
-        <span>📶</span> Router Admin
-    </a>
-    <div class="nav-links">
-        <a href="/cgi-bin/switchs.cgi" class="nav-link">Tornar al llistat</a>
-    </div>
-</nav>
+cat $DIR/$DIR_PROJECTE/$DIR_CGI/$CSS_CGI_BIN
 
-<div class="container">
-    <div class="card" style="max-width: 600px; margin: 0 auto;">
-        <div class="card-header">
-            <h2 class="card-title">Afegir Nou Switch</h2>
-        </div>
-        <div class="card-body">
-            <form action="/cgi-bin/switchs-configurar.cgi" method="get">
-                <input type="hidden" name="accio" value="afegir">
-                
-                <div class="form-group" style="margin-bottom: 15px;">
-                    <label for="nom" style="display:block; margin-bottom:5px; font-weight:500;">Nom del Switch:</label>
-                    <input type="text" id="nom" name="nom" required style="width:100%; padding:8px; border:1px solid #ddd; border-radius:4px;">
-                </div>
+echo "</head><body>"
 
-                <div class="form-group" style="margin-bottom: 15px;">
-                    <label for="ip" style="display:block; margin-bottom:5px; font-weight:500;">Adreça IP:</label>
-                    <input type="text" id="ip" name="ip" required pattern="^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$" placeholder="192.168.1.10" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:4px;">
-                </div>
-                
-                <div class="form-group" style="margin-bottom: 15px;">
-                    <label for="protocol" style="display:block; margin-bottom:5px; font-weight:500;">Protocol de Gestió:</label>
-                    <select id="protocol" name="protocol" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:4px;">
-                        <option value="ssh" selected>SSH (Port 22)</option>
-                        <option value="telnet">Telnet (Port 23)</option>
-                    </select>
-                </div>
+echo "<h2>Afegir nou switch</h2>"
+echo "<form action='/cgi-bin/switchs.cgi' method='get'>"
+echo "<input type='hidden' name='comand' value='configurar' >"
+echo "<input type='hidden' name='accio' value='afegir_switch' >"
+echo "<table>"
+echo "<tr><th>Nom</th><th>IP</th><th>Usuari</th><th>Contrasenya</th><th>Telnet|SSH</th></tr>"
+echo "<tr>"
+# Nom ara també més ample
+echo "<td><input type='text' name='nom' value='' style='width: 250px;'></td>"
+echo "<td><input type='text' name='ip' value='' ></td>"
+echo "<td><input type='text' name='user' value=''></td>"
+echo "<td><input type='text' name='pass' value=''></td>"
+echo "<td><input type='text' name='protocol' value=''></td>"
+echo "</tr>"
+echo "</table>"
+echo "<button type='submit'>Afegir switch</button>"
+echo "</form>"
 
-                <div class="form-group" style="margin-bottom: 15px;">
-                    <label for="user" style="display:block; margin-bottom:5px; font-weight:500;">Usuari d'Administració:</label>
-                    <input type="text" id="user" name="user" required style="width:100%; padding:8px; border:1px solid #ddd; border-radius:4px;">
-                </div>
-
-                <div class="form-group" style="margin-bottom: 20px;">
-                    <label for="pass" style="display:block; margin-bottom:5px; font-weight:500;">Contrasenya:</label>
-                    <input type="password" id="pass" name="pass" required style="width:100%; padding:8px; border:1px solid #ddd; border-radius:4px;">
-                </div>
-
-                <div style="display: flex; gap: 10px;">
-                    <button type="submit" class="btn">Afegir Switch</button>
-                    <a href="/cgi-bin/switchs.cgi" class="btn secondary">Cancel·lar</a>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-</body>
-</html>
-EOF
+echo "</body></html>"

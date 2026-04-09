@@ -1,96 +1,71 @@
 #!/bin/bash
 
-# Load configuration
 source /usr/local/JSBach/conf/variables.conf
 
 echo "Content-type: text/html; charset=utf-8"
-echo "Cache-Control: no-cache, no-store, must-revalidate"
-echo "Pragma: no-cache"
-echo "Expires: 0"
 echo ""
 
-cat << EOF
-<!DOCTYPE html>
-<html lang="ca">
+/bin/cat << EOM
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestió de Switchs</title>
-    <link rel="stylesheet" href="/style.css">
+  <meta charset="utf-8">
+  <title>Hola món CGI</title>
+EOM
+cat $DIR/$DIR_PROJECTE/$DIR_CGI/$CSS_CGI_BIN
+/bin/cat << EOM
 </head>
 <body>
+EOM
 
-<nav class="navbar">
-    <a href="/cgi-bin/main.cgi" class="navbar-brand">
-        <span>📶</span> Router Admin
-    </a>
-    <div class="nav-links">
-        <a href="/cgi-bin/ifwan.cgi" class="nav-link">WAN</a>
-        <a href="/cgi-bin/enrutar.cgi" class="nav-link">Enrutament</a>
-        <a href="/cgi-bin/bridge.cgi" class="nav-link">Bridge</a>
-        <a href="/cgi-bin/tallafocs.cgi" class="nav-link">Tallafocs</a>
-        <a href="/cgi-bin/wifi.cgi" class="nav-link">WiFi</a>
-        <a href="/cgi-bin/dmz.cgi" class="nav-link">DMZ</a>
-        <a href="/cgi-bin/ebtables.cgi" class="nav-link">Ebtables</a>
-        <a href="/cgi-bin/switchs.cgi" class="nav-link active">Switchs</a>
-    </div>
-</nav>
+comand=$(echo "$QUERY_STRING" | sed -n 's/^.*comand=\([^&]*\).*$/\1/p')
 
-<div class="container">
-    <div class="card">
-        <div class="card-header">
-            <h2 class="card-title">Infraestructura de Xarxa (Switchs)</h2>
-            <a href="/cgi-bin/switchs-nou.cgi" class="btn small">Afegir Switch</a>
-        </div>
-        <div class="card-body">
-            
-            <table class="table">
-              <thead>
-                <tr>
-                  <th>Nom del Switch</th>
-                  <th>Adreça IP</th>
-                  <th>Estat</th>
-                  <th>Accions</th>
-                </tr>
-              </thead>
-              <tbody>
-EOF
+case $comand in    
+    "iniciar")
+        echo "<pre>$("$DIR"/"$DIR_PROJECTE"/"$DIR_SCRIPTS"/client_srv_cli switchs iniciar) </pre><br>"
+    ;;
+    "aturar")
+        echo "<pre>$("$DIR"/"$DIR_PROJECTE"/"$DIR_SCRIPTS"/client_srv_cli switchs aturar) </pre><br>"
+    ;;
+    "configurar")
+        accio=$(echo "$QUERY_STRING" | sed -n 's/^.*accio=\([^&]*\).*$/\1/p')
+        case $accio in
+            "eliminar_switch" | "afegir_switch")  
+                nom=$(echo "$QUERY_STRING" | sed -n 's/^.*nom=\([^&]*\).*$/\1/p')
+                ip=$(echo "$QUERY_STRING" | sed -n 's/^.*ip=\([^&]*\).*$/\1/p')
+                user=$(echo "$QUERY_STRING" | sed -n 's/^.*user=\([^&]*\).*$/\1/p')
+                pass=$(echo "$QUERY_STRING" | sed -n 's/^.*pass=\([^&]*\).*$/\1/p')
+                protocol=$(echo "$QUERY_STRING" | sed -n 's/^.*protocol=\([^&]*\).*$/\1/p')
 
-# Get status from script
-# Output format: "nom ip ESTAT"
-$DIR/$PROJECTE/$DIR_SCRIPTS/client_srv_cli switchs estat | while read -r nom ip estat; do
-    echo "<tr>"
-    echo "<td><strong>$nom</strong></td>"
-    
-    if [[ "$estat" == "FUNCIONA" ]]; then
-        echo "<td><a href='http://$ip' target='_blank' style='color:#1a73e8; text-decoration:none;'>$ip ↗</a></td>"
-        echo "<td><span class='badge badge-success'>ACTIU</span></td>"
-    else
-        echo "<td>$ip</td>"
-        echo "<td><span class='badge badge-danger'>NO RESPON</span></td>"
-    fi
-    
-    echo "<td>"
-    echo "<div style='display:flex; gap:8px;'>"
-    echo "  <a href='switchs-configurar.cgi?accio=eliminar&nom=$nom&ip=$ip' class='btn btn-danger btn-sm' onclick=\"return confirm('Segur que vols eliminar aquest switch?');\">Eliminar</a>"
-    # Placeholder for future "mac table" feature if needed, though not in dashboard requirement yet
-    # echo "  <a href='switchs-configurar.cgi?accio=taula_mac&ip=$ip' class='btn btn-secondary btn-sm'>MACs</a>"
-    echo "</div>"
-    echo "</td>"
-    echo "</tr>"
-done
+                echo "$accio el switch $nom $ip"
 
-cat << EOF
-              </tbody>
-            </table>
-            
-            <div style="margin-top: 20px; font-size: 0.9em; color: #666;">
-                <p>Nota: L'estat es verifica mitjançant PING (timeout 1s).</p>
-            </div>
-        </div>
-    </div>
-</div>
+                echo "<pre>$("$DIR"/"$DIR_PROJECTE"/"$DIR_SCRIPTS"/client_srv_cli switchs configurar $accio $nom $ip $user $pass $protocol) <br>"
+            ;;
+            "desactivar_acl_admin" | "desactivar_acl_macs" | "activar_acl_admin" | "activar_acl_macs")
+                ip=$(echo "$QUERY_STRING" | sed -n 's/^.*ip=\([^&]*\).*$/\1/p')
+                echo "<pre>$("$DIR"/"$DIR_PROJECTE"/"$DIR_SCRIPTS"/client_srv_cli switchs configurar $comand $ip) </pre><br>"
+            ;;
+            "blocar_mac")
+                mac=$(echo "$QUERY_STRING" | sed -n 's/^.*mac=\([^&]*\).*$/\1/p' | sed 's/%3[aA]/:/g')
+                echo "<pre>$("$DIR"/"$DIR_PROJECTE"/"$DIR_SCRIPTS"/client_srv_cli switchs configurar blocar_mac $mac) </pre><br>"
+            ;;
+            "desblocar_mac")
+                mac=$(echo "$QUERY_STRING" | sed -n 's/^.*mac=\([^&]*\).*$/\1/p' | sed 's/%3[aA]/:/g')
+                echo "<pre>$("$DIR"/"$DIR_PROJECTE"/"$DIR_SCRIPTS"/client_srv_cli switchs configurar desblocar_mac $mac) </pre><br>"
+            ;;    
+            "eliminar_mac_vlan_admin")
+                echo "eliminar mac vlan admin"
+                mac=$(echo "$QUERY_STRING" | sed -n 's/^.*mac=\([^&]*\).*$/\1/p' | sed 's/%3[aA]/:/g')
+                echo "<pre>$("$DIR"/"$DIR_PROJECTE"/"$DIR_SCRIPTS"/client_srv_cli switchs configurar eliminar_mac_vlan_admin $mac)</pre><br>"
+            ;;
+            "afegir_mac_vlan_admin")
+                echo "afegir mac vlan admin"
+                mac=$(echo "$QUERY_STRING" | sed -n 's/^.*mac=\([^&]*\).*$/\1/p' | sed 's/%3[aA]/:/g')
+                echo "<pre>$("$DIR"/"$DIR_PROJECTE"/"$DIR_SCRIPTS"/client_srv_cli switchs configurar afegir_mac_vlan_admin $mac)</pre><br>"
+            ;;
+        esac    
+esac
 
+/bin/cat << EOM
 </body>
 </html>
-EOF
+EOM

@@ -1,121 +1,190 @@
 #!/bin/bash
 
 source /usr/local/JSBach/conf/variables.conf
-source $DIR/$PROJECTE/$DIR_CONF/$CONF_IFWAN
+source $DIR/$DIR_PROJECTE/$DIR_CONF/$IFWAN_CONF
+source $DIR/$DIR_PROJECTE/$DIR_SCRIPTS/$FUNCIONS
 
 ######################################################################
 ###  Funcions
 ######################################################################
 
-fnc_iniciar()
-{
+fnc_iniciar() {
+    if [[ -z "$IFW_MODE" && -z "$IFW_IFWAN" ]]; then
+        echo "No es pot iniciar, no hi ha configuracio"
+        exit 1
+    fi
 
-	if [ "$(fnc_estat)" == "$ACTIVAT" ]
-	then
-		echo "Ja esta activa"
-		exit 1
-	fi
-	
-	case "$IFW_MODE" in
-	  "dhcp")
-	    dhcpcd $IFW_IFWAN
-	    ;;
-	  "manual")
-	    ip a a $IFW_IP/$IFW_MASC dev $IFW_IFWAN
-	    ip l s dev $IFW_IFWAN up
-	    ip r a default via $IFW_PE
-	    if grep "#DNS=" /etc/systemd/resolved.conf;
-	    then
-	    	sed -i 's/#DNS=/DNS='$IFW_S_DNS'/g' /etc/systemd/resolved.conf
-	    fi
-	    
-	    if ! grep "DNS=$IFW_S_DNS" /etc/systemd/resolved.conf;
-	    then
-	    	sed -i 's/^DNS=.*/DNS='$IFW_S_DNS'/g' /etc/systemd/resolved.conf
-	    fi
-	    systemctl restart systemd-resolved	
-	    ;; 
-	  *)
-	    echo "ERROR al iniciar o dhcp o manual"
-	    ;;
-	esac
+    if [[ "$(fnc_estat)" == $ACTIVAT* ]]; then
+        echo "Ja esta activa"
+        exit 1
+    fi
+
+    case "$IFW_MODE" in
+        "dhcp")
+            dhcpcd $IFW_IFWAN 2>&1
+            ;;
+        "manual")
+            ip a a $IFW_IP/$IFW_MASC dev $IFW_IFWAN
+            ip l s dev $IFW_IFWAN up
+            ip r a default via $IFW_PE
+            if grep "#DNS=" /etc/systemd/resolved.conf; then
+                sed -i 's/#DNS=/DNS='$IFW_S_DNS'/g' /etc/systemd/resolved.conf
+            fi
+
+            if ! grep "DNS=$IFW_S_DNS" /etc/systemd/resolved.conf; then
+                sed -i 's/^DNS=.*/DNS='$IFW_S_DNS'/g' /etc/systemd/resolved.conf
+            fi
+            systemctl restart systemd-resolved
+            ;;
+        *)
+            echo "ERROR al iniciar o dhcp o manual"
+            exit 1
+            ;;
+    esac
+    
+    sed -i 's/^ifwan;.*/ifwan;ACTIVAT/' "$DIR/$DIR_PROJECTE/$DIR_CONF/$SERVEIS"
 }
 
-fnc_aturar()
-{	
-	# Check if already stopped
-	if [ "$(fnc_estat)" == "$DESACTIVAT" ]; then
-		echo "Ja està parada"
-		exit 0
-	fi
+fnc_aturar() {
+    if [[ -z "$IFW_MODE" && -z "$IFW_IFWAN" ]]; then
+        echo "No es pot aturar, no hi ha configuracio"
+        exit 1
+    fi
 
-	case "$IFW_MODE" in
-	  "dhcp")
-	    echo "$IFW_MODE desactivant"
-	    dhcpcd -k $IFW_IFWAN
-	    ;;
-	  "manual")
-	    echo "$IFW_MODE desactivant"
-	    ip a d $IFW_IP/$IFW_MASC dev $IFW_IFWAN
-	    ip l s dev $IFW_IFWAN down
-	    ;; 
-	  *)
-	    echo "ERROR al aturar o dhcp o manual"
-	    ;;
-	esac
+    case "$IFW_MODE" in
+        "dhcp")
+            echo "$IFW_MODE desactivant"
+            dhcpcd -k $IFW_IFWAN
+            ;;
+        "manual")
+            echo "$IFW_MODE desactivant"
+            ip a d $IFW_IP/$IFW_MASC dev $IFW_IFWAN
+            ip l s dev $IFW_IFWAN down
+            ;;
+        *)
+            echo "ERROR al aturar o dhcp o manual"
+            exit 1
+            ;;
+    esac
+    
+    sed -i 's/^ifwan;.*/ifwan;DESACTIVAT/' "$DIR/$DIR_PROJECTE/$DIR_CONF/$SERVEIS"
 }
 
+fnc_configurar() {
+    local ACCIO=$1
+    shift
 
-fnc_configurar()
-{	
-	if [[ "$1" == "mostrar" ]] then
-		echo $IFW_MODE $IFW_IFWAN $IFW_IP $IFW_MASC $IFW_PE $IFW_S_DNS
-	else
-		fnc_aturar	
-		(
-			echo IFW_MODE=$1 
-			echo IFW_IFWAN=$2
-			echo IFW_IP=$( echo $3 | cut -d'/' -f1 )
-			echo IFW_MASC=$( echo $3 | cut -d'/' -f2 )
-			echo IFW_PE=$4
-			echo IFW_S_DNS=$5
-		) >  $DIR/$PROJECTE/$DIR_CONF/$CONF_IFWAN
-		
-		echo "Configuracio guardada i targeta aturada"
-	fi
+    case "$ACCIO" in
+        "guardar")
+            local MODE=$1
+            local INT=$2
+
+            # Validem nombre de parametres
+            if [[ "$MODE" == "dhcp" ]]; then
+                if [ $# -ne 2 ]; then
+                    echo "ERROR: Nombre de paràmetres incorrecte per a DHCP."
+                    echo "Ús: ifwan configurar guardar dhcp <interficie>"
+                    exit 1
+                fi
+            elif [[ "$MODE" == "manual" ]]; then
+                if [ $# -ne 5 ]; then
+                    echo "ERROR: Nombre de paràmetres incorrecte per a MANUAL."
+                    echo "Ús: ifwan configurar guardar manual <interficie> <ip/mascara> <gateway> <dns>"
+                    exit 1
+                fi
+            else
+                echo "ERROR: El mode ha de ser 'dhcp' o 'manual'. S'ha rebut: '$MODE'"
+                echo "Ús: ifwan configurar guardar [dhcp|manual] ..."
+                exit 1
+            fi
+
+            if [[ -n "$IFW_MODE" && -n "$IFW_IFWAN" ]]; then
+                fnc_aturar
+            fi
+
+            # Validacio de la interficie
+            if ! fnc_validar_int "$INT"; then
+                echo "ERROR: La interficie $INT no existeix"
+                exit 1
+            fi
+
+            # Validacio de dades per a mode manual
+            if [[ "$MODE" == "manual" ]]; then
+
+                MASCARA=$(echo "$3" | cut -d'/' -f2)
+                # IP i Mascara
+                if ! fnc_validar_ip_host "$3"; then
+                    echo "ERROR: Format IP/Mascara incorrecte ($3)"
+                    exit 1
+                fi
+
+                # Gateway (PE)
+                if ! fnc_validar_ip_host "$4/$MASCARA"; then
+                    echo "ERROR: Format Porta d'Enllaç incorrecte ($4/$MASCARA)"
+                    exit 1
+                fi
+
+                if ! fnc_validar_mateixa_xarxa "$3" "$4/$MASCARA"; then
+                    echo "ERROR: La Porta d'Enllaç ($4) no està dins de la subxarxa de la IP ($3/$MASCARA)"
+                    exit 1
+                fi
+
+                # DNS
+                if ! fnc_validar_ip "$5"; then
+                    echo "ERROR: Format DNS incorrecte ($5)"
+                    exit 1
+                fi
+            fi
+
+            (
+                echo IFW_MODE=$1
+                echo IFW_IFWAN=$2
+                echo IFW_IP=$(echo $3 | cut -d'/' -f1)
+                echo IFW_MASC=$(echo $3 | cut -d'/' -f2)
+                echo IFW_PE=$4
+                echo IFW_S_DNS=$5
+            ) > $DIR/$DIR_PROJECTE/$DIR_CONF/$IFWAN_CONF
+
+            echo "Configuracio guardada i targeta aturada"
+            ;;
+        *)
+            echo "ERROR: Acció desconeguda: '$ACCIO'"
+            echo "Ús: ifwan configurar guardar"
+            exit 1
+            ;;
+    esac
 }
 
-
-fnc_estat()
-{	
-	if nslookup google.com > /dev/null 2>&1 ; then
-		# Get IP address
-		IP_ADDR=$(ip addr show $IFW_IFWAN 2>/dev/null | grep 'inet ' | awk '{print $2}' | cut -d'/' -f1)
-		
-		if [ -n "$IP_ADDR" ]; then
-			echo "<span style='color: green; font-weight: bold;'>✓ ACTIVAT</span><br>"
-			echo "IP: <strong>$IP_ADDR</strong><br>"
-			echo "Dev: <strong>$IFW_IFWAN</strong>"
-		else
-			echo "<span style='color: green; font-weight: bold;'>ACTIVAT</span> (sense IP)"
-		fi
-	else
-		echo "<span style='color: red; font-weight: bold;'>✗ DESACTIVAT</span>"
-	fi
-	    
+fnc_mostrar() {
+    echo $IFW_MODE $IFW_IFWAN $IFW_IP $IFW_MASC $IFW_PE $IFW_S_DNS
 }
 
+fnc_estat() {
+    if [[ -z "$IFW_MODE" && -z "$IFW_IFWAN" ]]; then
+        echo "$DESCONFIGURAT"
+        echo "No hi ha configuracio"
+        exit 1
+    fi
+    if nslookup google.com > /dev/null 2>&1; then
+        echo "$ACTIVAT"
+        echo " "
+        ip -br addr show dev $IFW_IFWAN
+    else
+        echo "$DESACTIVAT"
+    fi
+
+}
 
 ######################################################################
 ###  MAIN
 ######################################################################
 
-MSG="falta [iniciar, aturar, configurar ,estat]"
+MSG="Error: opcio desconeguda falta [iniciar, aturar, configurar ,estat]"
 
 # Comprovem que hi hagi almenys un argument (la opció)
 if [ $# -lt 1 ]; then
-  echo "$MSG"
-  exit 1
+    echo "$MSG"
+    exit 1
 fi
 
 OPCIO_1=$1
@@ -123,21 +192,22 @@ shift
 
 # Fem switch IFW_PEr executar la funció que toca
 case "$OPCIO_1" in
-  iniciar)
-    fnc_iniciar  $@
-    ;;
-  aturar)
-    fnc_aturar	$@
-    ;; 
-  configurar) 
-    fnc_configurar $@
-    ;;
-  estat) 
-    fnc_estat $@
-    ;;
-  *)
-    echo "$MSG"
-    ;;
+    iniciar)
+        fnc_iniciar $@
+        ;;
+    aturar)
+        fnc_aturar $@
+        ;;
+    configurar)
+        fnc_configurar $@
+        ;;
+    mostrar)
+        fnc_mostrar $@
+        ;;
+    estat)
+        fnc_estat $@
+        ;;
+    *)
+        echo "$MSG"
+        ;;
 esac
-
-

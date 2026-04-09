@@ -2,42 +2,54 @@
 
 source /usr/local/JSBach/conf/variables.conf
 
+while read ordre; do
+    if [[ -n $ordre ]]; then
 
-while read ordre
-do
-	if [[ -n $ordre ]]; then
-		# Log for debugging (can be removed later)
-		# echo "$(date) - RECV: $ordre" >> /tmp/jsbach_cli.log
-		
-		Comando=$(echo $ordre| awk '{print $1}') 
-		Arguments=$(echo $ordre| awk '{for (i=2; i<=NF; ++i)  printf $i " " }') 
-				
-		case "$Comando" in
-			"enrutar")  
-			    $DIR/$PROJECTE/$DIR_SCRIPTS/enrutar $Arguments
-			    ;;
-			"ifwan")
-			    $DIR/$PROJECTE/$DIR_SCRIPTS/ifwan $Arguments
-			    ;;
-			"bridge")
-			    $DIR/$PROJECTE/$DIR_SCRIPTS/bridge $Arguments
-			    ;;			    
-			"tallafocs")
-			    $DIR/$PROJECTE/$DIR_SCRIPTS/tallafocs $Arguments
-			    ;;	
-			"dmz")
-			    $DIR/$PROJECTE/$DIR_SCRIPTS/dmz $Arguments
-			    ;;
-			"switchs")
-			    $DIR/$PROJECTE/$DIR_SCRIPTS/switchs $Arguments
-			    ;;
-			"wifi")
-			    $DIR/$PROJECTE/$DIR_SCRIPTS/wifi $Arguments
-			    ;;
-			*) 
-			    echo "CLI Error en l'argument $Comando $Arguments"
-			    ;;
-		esac	
-		echo "final"
-	fi
-done;
+        Comando=$(echo $ordre | awk '{print $1}')
+        Arguments=$(echo $ordre | awk '{for (i=2; i<=NF; ++i)  printf $i " " }')
+
+        case "$Comando" in
+            "ifwan")
+                $DIR/$DIR_PROJECTE/$DIR_SCRIPTS/ifwan $Arguments
+                ;;
+            "enrutar")
+                $DIR/$DIR_PROJECTE/$DIR_SCRIPTS/enrutar $Arguments
+                ;;
+            "bridge")
+                $DIR/$DIR_PROJECTE/$DIR_SCRIPTS/bridge $Arguments
+                ;;
+            "tallafocs")
+                $DIR/$DIR_PROJECTE/$DIR_SCRIPTS/tallafocs $Arguments
+                ;;
+            "dmz")
+                $DIR/$DIR_PROJECTE/$DIR_SCRIPTS/dmz $Arguments
+                ;;
+            "switchs")
+                $DIR/$DIR_PROJECTE/$DIR_SCRIPTS/switchs $Arguments
+                ;;
+            "dhcp")
+                $DIR/$DIR_PROJECTE/$DIR_SCRIPTS/dhcp $Arguments
+                ;;
+            "wifi")
+                $DIR/$DIR_PROJECTE/$DIR_SCRIPTS/wifi $Arguments
+                ;;
+            "portal_captiu")
+                $DIR/$DIR_PROJECTE/$DIR_SCRIPTS/portal_captiu $Arguments
+                ;;
+            "vpn_wg")
+                $DIR/$DIR_PROJECTE/$DIR_SCRIPTS/vpn_wg $Arguments
+                ;;
+            "vpn_wg_client")
+                $DIR/$DIR_PROJECTE/$DIR_SCRIPTS/vpn_wg_client $Arguments
+                ;;
+            "portmirror")
+                $DIR/$DIR_PROJECTE/$DIR_SCRIPTS/portmirror $Arguments
+                ;;
+            *)
+                echo "CLI Error, arguments [ifwan, enrutar, bridge, tallafocs, dmz, switchs, dhcp, wifi, vpn_wg, vpn_wg_client, portmirror]"
+                ;;
+        esac
+    fi
+
+    echo "final"
+done

@@ -1,15 +1,15 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="ca">
 
 <head>
     <meta charset="UTF-8">
-    <title>Portal WiFi</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal Captiu - Validació</title>
 
     <style>
         body {
             margin: 0;
-            font-family: Arial, sans-serif;
+            font-family: Arial, Helvetica, sans-serif;
             background: linear-gradient(135deg, #2c3e50, #3498db);
             display: flex;
             justify-content: center;
@@ -17,56 +17,65 @@
             height: 100vh;
         }
 
-        .container {
-            background: white;
+        .login-container {
+            background: #ffffff;
             padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
-            width: 90%;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            width: 100%;
             max-width: 400px;
+            box-sizing: border-box;
         }
 
         h2 {
             text-align: center;
-            margin-bottom: 25px;
+            margin-bottom: 20px;
             color: #2c3e50;
         }
 
         label {
-            font-weight: bold;
             display: block;
-            margin-top: 15px;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #34495e;
         }
 
         input[type="text"],
         input[type="password"] {
             width: 100%;
-            padding: 12px;
-            margin-top: 5px;
-            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 5px;
             border: 1px solid #ccc;
             font-size: 16px;
+            box-sizing: border-box;
         }
 
-        button {
+        input[type="submit"] {
             width: 100%;
             padding: 12px;
-            margin-top: 20px;
             background-color: #3498db;
             border: none;
+            border-radius: 5px;
             color: white;
             font-size: 16px;
-            border-radius: 6px;
+            font-weight: bold;
             cursor: pointer;
+            transition: background 0.3s ease;
         }
 
-        button:hover {
+        input[type="submit"]:hover {
             background-color: #2980b9;
         }
 
         @media (max-width: 480px) {
-            .container {
+            .login-container {
                 padding: 20px;
+                border-radius: 0;
+                height: 100vh;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
             }
         }
     </style>
@@ -74,17 +83,17 @@
 
 <body>
 
-    <div class="container">
-        <h2>Acceso WiFi</h2>
+    <div class="login-container">
+        <h2>Accés a la xarxa</h2>
 
-        <form action="/cgi-bin/validacio.cgi" method="POST">
-            <label>Usuario:</label>
-            <input type="text" name="usuario" required>
+        <form method="get" action="/cgi-bin/validacio.cgi">
+            <label for="usuari">Usuari:</label>
+            <input type="text" id="usuari" name="usuari" required>
 
-            <label>Contraseña:</label>
-            <input type="password" name="password" required>
+            <label for="contrasenya">Contrasenya:</label>
+            <input type="password" id="contrasenya" name="contrasenya" required>
 
-            <button type="submit">Validar</button>
+            <input type="submit" value="Validar">
         </form>
     </div>
 
