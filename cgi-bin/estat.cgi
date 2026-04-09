@@ -81,7 +81,7 @@ cat $DIR/$DIR_PROJECTE/$DIR_CGI/$CSS_CGI_BIN
         <div class="w-full bg-brand-bg h-2 rounded-full overflow-hidden border border-brand-border">
             <div class="bg-brand-emerald h-full transition-all duration-500 ease-in-out" style="width: 45%" id="ram-bar"></div>
         </div>
-        <div class="text-xs font-mono text-slate-500 mt-2 text-right">3.6 GB / 8.0 GB</div>
+        <div id="ram-desc" class="text-xs font-mono text-slate-500 mt-2 text-right">-- GB / -- GB</div>
     </div>
 
     <!-- DISK -->
@@ -89,7 +89,7 @@ cat $DIR/$DIR_PROJECTE/$DIR_CGI/$CSS_CGI_BIN
         <div>
             <h3 class="!bg-transparent !border-none !p-0 !text-xs !mb-1 text-slate-400">Almacenamiento</h3>
             <div class="flex items-baseline space-x-1">
-                <span class="text-3xl font-mono font-bold text-white">12</span>
+                <span id="disk-val" class="text-3xl font-mono font-bold text-white">--</span>
                 <span class="text-sm font-mono text-slate-500">% Utilizado</span>
             </div>
         </div>
@@ -131,10 +131,10 @@ cat $DIR/$DIR_PROJECTE/$DIR_CGI/$CSS_CGI_BIN
 </div>
 
 <!-- Rejilla Visual -->
-<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
+<div id="service-badges-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
 EOM
 
-# --- FUNCIÓN: RENDERIZAR ESTATUS Y SUB-DETALLES ---
+# --- FUNCIÓN: RENDERIZAR ESTATUS (DESCRIPTIVO HUMANO CON ENLACES) ---
 function print_status_badge {
   local title=$1
   local icon=$2
@@ -143,13 +143,11 @@ function print_status_badge {
   local state
   local color_class
   local dot_class
-  local details
+  local description
+  local href="#"
   
-  # Filtramos ACTIVAT/DESACTIVAT y líneas vacías para no ensuciar los detalles extra
-  details=$(echo "$value" | grep -v -i -E "^(ACTIVAT|DESACTIVAT|DESCONFIGURAT)$" | sed '/^[[:space:]]*$/d')
-
-  # Usamos grep para detectar la bandera ACTIVAT en la respuesta original completa
-  if echo "$value" | grep -q -i "ACTIVAT"; then
+  # Usamos grep para detectar la bandera exclusiva ACTIVAT filtrando explícitamente posibles DESACTIVAT
+  if echo "$value" | grep -i "ACTIVAT" | grep -q -v -i "DESACTIVAT"; then
      state="ONLINE"
      color_class="text-brand-emerald border-brand-emerald/30 bg-brand-emerald/10"
      dot_class="bg-brand-emerald shadow-[0_0_8px_rgba(16,185,129,0.8)]"
@@ -159,10 +157,28 @@ function print_status_badge {
      dot_class="bg-slate-600"
   fi
 
-  echo "<div class='bg-brand-card border border-brand-border rounded-lg p-5 flex flex-col shadow-sm'>"
-  echo "  <div class='flex items-center justify-between mb-2'>"
+  # Rutas a CGI relativas
+  case "$title" in
+    "Red Externa (WAN)") href="/cgi-bin/ifwan-menu.cgi"; description="Interfaz de área amplia vinculada y operativa en el núcleo." ;;
+    "Enrutamiento (NAT)") href="/cgi-bin/enrutar-menu.cgi"; description="Reglas de enmascaramiento dinámico (Masquerade) activadas." ;;
+    "Switch & VLANs") href="/cgi-bin/bridge-menu.cgi"; description="Puente lógico principal activo y segmentando topología L2." ;;
+    "Punto de Acceso WiFi") href="/cgi-bin/wifi-menu.cgi"; description="Módulo Hotspot emitiendo señal inalámbrica y aislando clientes WiFi." ;;
+    "Túnel VPN (Op/Wg)") href="/cgi-bin/vpn_wg-menu.cgi"; description="Demonios de cifrado escuchando conexiones entrantes de clientes VPN." ;;
+    "Servidor DHCP") href="/cgi-bin/dhcp-menu.cgi"; description="Servicio Dnsmasq despachando IPs de enrutamiento dinámicamente." ;;
+    "Firewall Restrictivo") href="/cgi-bin/tallafocs-menu.cgi"; description="Políticas de cortafuegos IPTables aislando y repeliendo el tráfico." ;;
+    "Reenvío DMZ / Puertos") href="/cgi-bin/dmz-menu.cgi"; description="Traduciendo peticiones públicas directas hacia los servidores en DMZ." ;;
+    "Portal Cautivo") href="/cgi-bin/portal_captiu-menu.cgi"; description="Portal logístico en funcionamiento detectando nuevas MACs." ;;
+  esac
+
+  if [[ "$state" == "OFFLINE" ]]; then
+     description="Este servicio se encuentra desconectado, apagado o sin reglas aplicadas."
+  fi
+
+  # Envolvemos absolutamente todo en una etiqueta <a> super estilizada
+  echo "<a href='$href' onclick=\"if(window.top && window.top.document) { Array.from(window.top.document.querySelectorAll('aside nav a')).forEach(el => { el.classList.remove('bg-brand-border/30', 'text-brand-cyan', 'border-r-2'); el.classList.add('text-slate-400'); if(el.href.includes('$href')) { el.classList.remove('text-slate-400'); el.classList.add('bg-brand-border/30', 'text-brand-cyan', 'border-r-2'); window.top.document.getElementById('top-title').innerText = el.querySelector('span').innerText; } }); }\" class='block bg-brand-card border border-brand-border rounded-lg p-5 flex flex-col shadow-sm hover:border-brand-emerald/40 hover:bg-[#1a2536] hover:shadow-md hover:-translate-y-[2px] transition-all duration-200 cursor-pointer'>"
+  echo "  <div class='flex items-center justify-between mb-3'>"
   echo "    <div class='flex items-center space-x-4'>"
-  echo "      <div class='w-10 h-10 rounded-full bg-brand-bg flex items-center justify-center text-slate-400 border border-brand-border'><i class='$icon w-4 text-center'></i></div>"
+  echo "      <div class='w-10 h-10 rounded-full bg-[#141e30] flex items-center justify-center text-slate-400 border border-brand-border transition-colors group-hover:text-brand-cyan'><i class='$icon w-4 text-center'></i></div>"
   echo "      <div><h4 class='text-sm font-bold text-slate-200 m-0'>$title</h4></div>"
   echo "    </div>"
   echo "    <div class='flex items-center px-3 py-1 rounded-full border $color_class text-[11px] font-mono font-bold uppercase tracking-wider'>"
@@ -170,32 +186,10 @@ function print_status_badge {
   echo "    </div>"
   echo "  </div>"
 
-  # Transformar la información técnica bruta en Data Tags (Píldoras visuales)
-  if [[ -n "$details" ]]; then
-    echo "  <div class='mt-4 flex flex-wrap gap-2'>"
-    
-    # Procesar línea por línea usando bash built-ins y sed para limpieza
-    while IFS= read -r line; do
-       # Descartar líneas enteramente vacías (sólo espacios)
-       [[ -z "${line// /}" ]] && continue
-       
-       # Expresión regular sed agresiva para limpiar HTML inyectado (<strong>, <span..>, <br>) y convertir &nbsp; a espacios
-       clean_line=$(echo "$line" | sed -e 's/<[^>]*>//g' | sed 's/&nbsp;/ /g' | xargs)
-       
-       # Si después de limpiar HTML la línea quedó vacía, saltar
-       [[ -z "$clean_line" ]] && continue
-       
-       # Imprimir la etiqueta (Pill) con icono y trucaje para textos larguísimos
-       echo "    <div class='bg-[#0f172a] border border-brand-border/60 px-2.5 py-1.5 rounded-md text-[11px] font-mono text-slate-400 flex items-center shadow-sm max-w-full overflow-hidden hover:border-brand-cyan/50 hover:text-brand-cyan transition-colors cursor-default'>"
-       echo "      <i class='fa-solid fa-chevron-right text-brand-emerald/70 mr-2 text-[9px] flex-shrink-0'></i>"
-       echo "      <span class='truncate' title='$clean_line'>$clean_line</span>"
-       echo "    </div>"
-    done <<< "$details"
-    
-    echo "  </div>"
-  fi
-
-  echo "</div>"
+  echo "  <div class='mt-1 text-[13px] text-slate-400 leading-relaxed font-sans'>"
+  echo "    $description"
+  echo "  </div>"
+  echo "</a>"
 }
 
 # --- EJECUCIÓN (Asíncrona al backend) ---
@@ -224,15 +218,13 @@ print_status_badge "Portal Cautivo" "fa-solid fa-shield" "$RES_PORTAL"
 </div>
 
 <!-- ==============================================
-     SCRIPTS DE SIMULACIÓN (GRÁFICOS MÓVILES)
+     SCRIPTS AJAS PARA TELEMETRÍA EN TIEMPO REAL
      ============================================== -->
 <script>
-    // 1. Uptime calculado (ficticio por ahora, idealmente capturado con comando `uptime -p`)
-    document.getElementById('uptime-val').innerText = "12d 04h 15m";
-
-    // 2. Setup de CHART.JS
+    // Configuración Inicial de CHART.JS
     const ctx = document.getElementById('networkChart').getContext('2d');
     
+    // Gradientes visuales
     const gradientDL = ctx.createLinearGradient(0, 0, 0, 300);
     gradientDL.addColorStop(0, 'rgba(6, 182, 212, 0.4)');
     gradientDL.addColorStop(1, 'rgba(6, 182, 212, 0)');
@@ -280,31 +272,85 @@ print_status_badge "Portal Cautivo" "fa-solid fa-shield" "$RES_PORTAL"
         }
     });
 
-    // 3. Simulación de Backend Activo
+    // -------------------------------------------------------------
+    // MOTOR DE ACTUALIZACIÓN (AJAX)
+    // -------------------------------------------------------------
+    let lastRx = -1;
+    let lastTx = -1;
+    let lastTime = Date.now();
+    let tickCounter = 0;
+
     function updateDashboard() {
-        // Tráfico Aleatorio
-        const dlRate = Math.floor(Math.random() * (90 - 20)) + 20;
-        const ulRate = Math.floor(Math.random() * (40 - 5)) + 5;
-        
-        document.getElementById('dl-rate').innerText = dlRate.toFixed(1) + ' Mbps';
-        document.getElementById('ul-rate').innerText = ulRate.toFixed(1) + ' Mbps';
+        tickCounter++;
 
-        dlData.push(dlRate); dlData.shift();
-        ulData.push(ulRate); ulData.shift();
-        networkChart.update();
-        
-        // Uso de CPU
-        const newCpu = Math.floor(Math.random() * (45 - 20 + 1)) + 20;
-        document.getElementById('cpu-val').innerText = newCpu + '%';
-        document.getElementById('cpu-ring').setAttribute('stroke-dasharray', `${newCpu}, 100`);
+        // 1. OBTENER MÉTRICAS REALES DE LA MÁQUINA CADA 2 SEGS
+        fetch('/cgi-bin/metricas_api.cgi')
+            .then(r => r.json())
+            .then(data => {
+                // Actualizar Textos
+                document.getElementById('uptime-val').innerText = data.uptime;
+                document.getElementById('cpu-val').innerText = data.cpu + '%';
+                document.getElementById('ram-val').innerText = data.ram_percent + '%';
+                document.getElementById('ram-desc').innerText = data.ram_text;
+                document.getElementById('disk-val').innerText = data.disk;
 
-        // Consumo RAM
-        const newRam = Math.floor(Math.random() * (60 - 45 + 1)) + 45;
-        document.getElementById('ram-val').innerText = newRam + '%';
-        document.getElementById('ram-bar').style.width = newRam + '%';
+                // Animaciones Circulares y de Barras
+                document.getElementById('cpu-ring').setAttribute('stroke-dasharray', `${data.cpu}, 100`);
+                document.getElementById('ram-bar').style.width = data.ram_percent + '%';
+
+                // Cálculo Deltas de Red (Mbps)
+                if (lastRx !== -1) {
+                    const now = Date.now();
+                    const secondsDiff = (now - lastTime) / 1000;
+                    
+                    // Velocidad = Bits / Tiempo / Megabit
+                    let dlRate = ((data.rx_bytes - lastRx) * 8) / 1000000 / secondsDiff;
+                    let ulRate = ((data.tx_bytes - lastTx) * 8) / 1000000 / secondsDiff;
+
+                    if(dlRate < 0) dlRate = 0;
+                    if(ulRate < 0) ulRate = 0;
+
+                    document.getElementById('dl-rate').innerText = dlRate.toFixed(1) + ' Mbps';
+                    document.getElementById('ul-rate').innerText = ulRate.toFixed(1) + ' Mbps';
+
+                    // Modificar array Chart y refrescar
+                    dlData.push(dlRate); dlData.shift();
+                    ulData.push(ulRate); ulData.shift();
+                    
+                    // Escalar enp1s0 dynamically
+                    const p1s0Label = document.querySelector('h3.text-white.font-bold');
+                    if(p1s0Label && data.interface && data.interface != "") {
+                       p1s0Label.innerText = 'Tráfico de Red (' + data.interface + ')';
+                    }
+
+                    networkChart.update();
+                }
+
+                lastRx = data.rx_bytes;
+                lastTx = data.tx_bytes;
+                lastTime = Date.now();
+            })
+            .catch(console.error);
+
+        // 2. REFRESCO BACKGROUND DEL ESTADO (CADA ~30 SEGUNDOS)
+        // Soluciona el bug de apagado remoto sin tener que reiniciar la página ni romper el gráfico.
+        if (tickCounter > 15) {
+            tickCounter = 0;
+            fetch('/cgi-bin/estat.cgi')
+                .then(r => r.text())
+                .then(html => {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    const domNuevoGrid = doc.getElementById('service-badges-grid');
+                    if (domNuevoGrid) {
+                        document.getElementById('service-badges-grid').innerHTML = domNuevoGrid.innerHTML;
+                    }
+                })
+                .catch(console.error);
+        }
     }
 
-    // Inicializar movimiento del sistema
+    // Inicializar el puente
     setInterval(updateDashboard, 2000);
 </script>
 

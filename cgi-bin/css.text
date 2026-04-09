@@ -146,4 +146,45 @@ a:hover {
 a:visited { color: #06b6d4; }
 a:visited:hover { color: #0f172a; }
 
+/* Botón Universal Flotante de Volver Atrás */
+.global-back-btn {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    background-color: #1e293b;
+    color: #06b6d4 !important;
+    border: 1px solid #334155;
+    padding: 12px 24px;
+    border-radius: 50px;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+    z-index: 9999;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.global-back-btn:hover {
+    background-color: #06b6d4;
+    color: #0f172a !important;
+    box-shadow: 0 0 20px rgba(6, 182, 212, 0.6);
+    transform: translateY(-4px);
+}
 </style>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    var path = window.location.pathname;
+    // Evitamos renderizar el boton de atras en el Dashboard (estat.cgi) o en la carcasa main.cgi
+    if (!path.includes('estat.cgi') && !path.includes('main.cgi')) {
+        var btn = document.createElement('a');
+        btn.href = 'javascript:window.history.back()';
+        btn.className = 'global-back-btn';
+        btn.innerHTML = '&#8592; VOLVER ATRÁS';
+        document.body.appendChild(btn);
+    }
+});
+</script>
