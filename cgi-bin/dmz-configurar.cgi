@@ -14,37 +14,6 @@ cat << EOF
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Configuració DMZ</title>
     <link rel="stylesheet" href="/style.css">
-    <style>
-        .rule-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px;
-            border-bottom: 1px solid #eee;
-        }
-        .rule-item:last-child {
-            border-bottom: none;
-        }
-        .rule-info {
-            display: flex;
-            gap: 20px;
-            flex-wrap: wrap;
-        }
-        .rule-port {
-            font-weight: 600;
-            color: #1a73e8;
-            width: 80px;
-        }
-        .rule-proto {
-            text-transform: uppercase;
-            font-weight: 500;
-            width: 60px;
-        }
-        .rule-ip {
-            font-family: monospace;
-            color: #666;
-        }
-    </style>
 </head>
 <body>
 
@@ -65,39 +34,52 @@ cat << EOF
 <div class="container">
     <div class="card">
         <div class="card-header">
-            <h2 class="card-title">Configuració de Regles DMZ</h2>
+            <h2 class="card-title">Regles de Desmilitarització (DMZ)</h2>
         </div>
         <div class="card-body">
             
-            <div class="card" style="box-shadow: none; border: 1px solid #eee; margin-bottom: 24px;">
-                <div class="card-header" style="background: #f5f5f5; padding: 12px 16px;">
-                    <h3 style="margin: 0; font-size: 16px;">Regles de Reenviament Actuals</h3>
-                </div>
-                <div>
+            <table class="table" style="margin-bottom: 24px;">
+                <thead>
+                    <tr>
+                        <th>Port Extern</th>
+                        <th>Protocol</th>
+                        <th>Host Intern Destí (IP)</th>
+                        <th style="text-align: right;">Accions</th>
+                    </tr>
+                </thead>
+                <tbody>
 EOF
 
+DMZ_OP=0
 IFS=$'\n'
 for iface in $($DIR/$PROJECTE/$DIR_SCRIPTS/client_srv_cli dmz configurar mostrar); do
     PORT=$(echo "$iface"|cut -d';' -f1)
     PROTO=$(echo "$iface"|cut -d';' -f2)
     IP_DMZ=$(echo "$iface"|cut -d';' -f3)
-    
-    echo "<div class='rule-item'>"
-    echo "  <div class='rule-info'>"
-    echo "    <span class='rule-port'>Port $PORT</span>"
-    echo "    <span class='rule-proto'>$PROTO</span>"
-    echo "    <span class='rule-ip'>Cap a $IP_DMZ</span>"
-    echo "  </div>"
-    echo "  <a href='/cgi-bin/dmz-eliminar.cgi?port=$PORT&proto=$PROTO&ipdmz=$IP_DMZ' class='btn secondary' style='color: #d93025; border-color: #d93025; padding: 4px 12px; font-size: 13px;'>Eliminar</a>"
-    echo "</div>"
+
+    if [ -n "$PORT" ]; then
+        DMZ_OP=1
+        echo "<tr>"
+        echo "  <td style='font-weight: 600; color: var(--primary-color);'>Port $PORT</td>"
+        echo "  <td style='text-transform: uppercase;'>$PROTO</td>"
+        echo "  <td style='font-family: monospace; font-size: 14px;'>$IP_DMZ</td>"
+        echo "  <td style='text-align: right;'>"
+        echo "    <a href='/cgi-bin/dmz-eliminar.cgi?port=$PORT&proto=$PROTO&ipdmz=$IP_DMZ' class='btn btn-danger btn-sm'>Eliminar</a>"
+        echo "  </td>"
+        echo "</tr>"
+    fi
 done
 
+if [ "$DMZ_OP" -eq 0 ]; then
+    echo "<tr><td colspan='4' style='text-align: center; color: #666; padding: 20px;'>No hi ha cap port de la DMZ obert actualment.</td></tr>"
+fi
+
 cat << EOF
-                </div>
-            </div>
+                </tbody>
+            </table>
 
             <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
-                <a href="/cgi-bin/dmz-nou-servei.cgi" class="btn">Obrir Nou Servei</a>
+                <a href="/cgi-bin/dmz-nou-servei.cgi" class="btn btn-primary">Obrir Nou Port (Servei)</a>
                 <a href="/cgi-bin/dmz.cgi" class="btn secondary">Tornar a DMZ</a>
             </div>
         </div>
