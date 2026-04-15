@@ -1,6 +1,5 @@
 #!/bin/bash
 
-
 source /usr/local/JSBach/conf/variables.conf
 
 /bin/cat << EOM
@@ -11,18 +10,18 @@ source /usr/local/JSBach/conf/variables.conf
 <meta content="MSHTML 6.00.2900.3660" name=GENERATOR> 
 
 EOM
-cat $DIR/$PROJECTE/$DIR_CGI/$CSS_CGI_BIN
+cat $DIR/$DIR_PROJECTE/$DIR_CGI/$CSS_CGI_BIN
 /bin/cat << EOM
 
 </head>
 <body>
-<h4><a href="/cgi-bin/dmz.cgi?comand=iniciar&" target="body">dmz iniciar</a></h4>
-<h4><a href="/cgi-bin/dmz.cgi?comand=aturar&" target="body">dmz aturar</a></h4>
-<h4><a href="/cgi-bin/dmz.cgi?comand=estat&" target="body">dmz estat</a></h4>
-<h4><a href="/cgi-bin/dmz-configurar.cgi" target="body">dmz configuracio</a></h4>
+<h2>DMZ</h2>
+
+<h4><a href="/cgi-bin/dmz.cgi?comand=iniciar&" target="body">iniciar</a></h4>
+<h4><a href="/cgi-bin/dmz.cgi?comand=aturar&" target="body">aturar</a></h4>
+<h4><a href="/cgi-bin/dmz.cgi?comand=estat&" target="body">estat</a></h4>
+<h4><a href="/cgi-bin/dmz-configurar.cgi" target="body">configuracio</a></h4>
 </body>
 </html>
 
 EOM
-
-

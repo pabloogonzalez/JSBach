@@ -1,69 +1,63 @@
 #!/bin/bash
 
 source /usr/local/JSBach/conf/variables.conf
+PAGINA="IFWAN"
 
 echo "Content-type: text/html; charset=utf-8"
 echo ""
 
-# Get command from query string
-comand=$(echo "$QUERY_STRING" | sed -n 's/^.*comand=\([^&]*\).*$/\1/p')
-
-cat << EOF
-<!DOCTYPE html>
-<html lang="ca">
+/bin/cat << EOM
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestió WAN</title>
-    <link rel="stylesheet" href="/style.css">
+  <meta charset="utf-8">
+  <title>Hola món </title>
+EOM
+cat $DIR/$DIR_PROJECTE/$DIR_CGI/$CSS_CGI_BIN
+/bin/cat << EOM
 </head>
 <body>
+EOM
 
-<nav class="navbar">
-    <a href="/cgi-bin/main.cgi" class="navbar-brand">
-        <span>📶</span> Router Admin
-    </a>
-    <div class="nav-links">
-        <a href="/cgi-bin/ifwan.cgi" class="nav-link active">WAN</a>
-        <a href="/cgi-bin/enrutar.cgi" class="nav-link">Enrutament</a>
-        <a href="/cgi-bin/bridge.cgi" class="nav-link">Bridge</a>
-        <a href="/cgi-bin/tallafocs.cgi" class="nav-link">Tallafocs</a>
-        <a href="/cgi-bin/wifi.cgi" class="nav-link">WiFi</a>
-        <a href="/cgi-bin/dmz.cgi" class="nav-link">DMZ</a>
-        <a href="/cgi-bin/ebtables.cgi" class="nav-link">Ebtables</a>
-    </div>
-</nav>
+comand=$(echo "$QUERY_STRING" | sed -n 's/^.*comand=\([^&]*\).*$/\1/p')
 
-<div class="container">
-    <div class="card">
-        <div class="card-header">
-            <h2 class="card-title">Gestió WAN</h2>
-        </div>
-        <div class="card-body">
-EOF
+case $comand in
+    "iniciar" | "aturar")
+        echo "<h2>$PAGINA $comand</h2>"
+        echo "<pre>$("$DIR"/"$DIR_PROJECTE"/"$DIR_SCRIPTS"/client_srv_cli ifwan $comand) </pre><br>"
+        echo "<pre>$("$DIR"/"$DIR_PROJECTE"/"$DIR_SCRIPTS"/client_srv_cli ifwan estat) </pre><br>"
+        ;;
+    "configurar")
+        argument=$(echo "$QUERY_STRING" | sed -n 's/^.*argument=\([^&]*\).*$/\1/p')
+        echo "<h2>$PAGINA $argument</h2>"
 
-if [ -n "$comand" ]; then
-    echo "<h3>Resultat: $comand</h3>"
-    echo "<pre>"
-    $DIR/$PROJECTE/$DIR_SCRIPTS/client_srv_cli ifwan $comand
-    echo "</pre>"
-fi
+        case $argument in
+            "guardar")
+                mode=$(echo "$QUERY_STRING" | sed -n 's/^.*mode=\([^&]*\).*$/\1/p')
+                int=$(echo "$QUERY_STRING" | sed -n 's/^.*int=\([^&]*\).*$/\1/p')
+                if [[ "$mode" == "manual" ]]; then
+                    ip=$(echo "$QUERY_STRING" | sed -n 's/^.*ip=\([^&]*\).*$/\1/p')
+                    masc=$(echo "$QUERY_STRING" | sed -n 's/^.*masc=\([^&]*\).*$/\1/p')
+                    pe=$(echo "$QUERY_STRING" | sed -n 's/^.*pe=\([^&]*\).*$/\1/p')
+                    dns=$(echo "$QUERY_STRING" | sed -n 's/^.*dns=\([^&]*\).*$/\1/p')
+                fi
 
-echo "<h3>Estat Actual</h3>"
-echo "<div>"
-$DIR/$PROJECTE/$DIR_SCRIPTS/client_srv_cli ifwan estat
-echo "</div>"
+                if [[ ! -z $ip ]]; then
+                    ipmas=$ip/$masc
+                fi
 
-cat << EOF
-            <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #eee;">
-                <a href="/cgi-bin/ifwan.cgi?comand=iniciar" class="btn">Iniciar</a>
-                <a href="/cgi-bin/ifwan.cgi?comand=aturar" class="btn secondary" style="color: #d93025; border-color: #d93025;">Aturar</a>
-                <a href="/cgi-bin/ifwan-configurar.cgi" class="btn secondary">Configurar</a>
-            </div>
-        </div>
-    </div>
-</div>
+                ordre="ifwan configurar guardar $mode $int $ipmas $pe $dns"
 
+                echo "<pre>$("$DIR"/"$DIR_PROJECTE"/"$DIR_SCRIPTS"/client_srv_cli $ordre)</pre> <br>"
+                ;;
+        esac
+        ;;
+    "estat")
+        echo "<h2>$PAGINA $comand</h2>"
+        echo "<pre>$("$DIR"/"$DIR_PROJECTE"/"$DIR_SCRIPTS"/client_srv_cli ifwan estat) </pre><br>"
+        ;;
+esac
+
+/bin/cat << EOM
 </body>
 </html>
-EOF
+EOM

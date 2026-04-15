@@ -1,194 +1,195 @@
 #!/bin/bash
 
-# Load configuration
 source /usr/local/JSBach/conf/variables.conf
+source $DIR/$DIR_PROJECTE/$DIR_SCRIPTS/$FUNCIONS
 
 echo "Content-type: text/html; charset=utf-8"
 echo ""
 
-cat << EOF
-<!DOCTYPE html>
-<html lang="ca">
+/bin/cat << EOM
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Configuració Tallafocs</title>
-    <link rel="stylesheet" href="/style.css">
+  <meta charset="utf-8">
+  <title>Hola món CGI</title>
+
+EOM
+cat $DIR/$DIR_PROJECTE/$DIR_CGI/$CSS_CGI_BIN
+/bin/cat << EOM
 </head>
 <body>
+EOM
 
-<nav class="navbar">
-    <a href="/cgi-bin/main.cgi" class="navbar-brand">
-        <span>📶</span> Router Admin
-    </a>
-    <div class="nav-links">
-        <a href="/cgi-bin/ifwan.cgi" class="nav-link">WAN</a>
-        <a href="/cgi-bin/enrutar.cgi" class="nav-link">Enrutament</a>
-        <a href="/cgi-bin/bridge.cgi" class="nav-link">Bridge</a>
-        <a href="/cgi-bin/tallafocs.cgi" class="nav-link active">Tallafocs</a>
-        <a href="/cgi-bin/wifi.cgi" class="nav-link">WiFi</a>
-        <a href="/cgi-bin/dmz.cgi" class="nav-link">DMZ</a>
-        <a href="/cgi-bin/ebtables.cgi" class="nav-link">Ebtables</a>
-    </div>
-</nav>
+estat_tallafocs=$("$DIR"/"$DIR_PROJECTE"/"$DIR_SCRIPTS"/client_srv_cli tallafocs estat)
+if [[ "$estat_tallafocs" == $ACTIVAT* ]]; then
+    echo "<h2> FORWARD CONFIGURACIÓ LANS </h2>"
+    echo "<br>"
 
-<div class="container">
-    <div class="card">
-        <div class="card-header">
-            <h2 class="card-title">Gestió de Connexions i VLANs</h2>
-        </div>
-        <div class="card-body">
+    for linia in $(fnc_buscar_Lans | grep -v '#'); do
+        nom=$(echo "$linia" | cut -d';' -f1)
+        id=$(echo "$linia" | cut -d';' -f2)
+        ip=$(echo "$linia" | cut -d';' -f3)
+        estat_vlan=$("$DIR"/"$DIR_PROJECTE"/"$DIR_SCRIPTS"/client_srv_cli tallafocs estat forward $id)
+        echo "<h3 style='display: flex; justify-content: space-between;'>"
+        echo "<span>  $nom $ip </span>"
+        echo "<span> $estat_vlan</span>"
+        echo "</h3>"
+        case "$estat_vlan" in
+            "CONNECTADA")
+                echo "<a href='tallafocs.cgi?comand=configurar&id=$id&accio=desconnectar&retorn=tallafocs-configuracio.cgi'><button type='button'>DESCONECTAR FORWARD</button></a>"
+                echo "<a href='tallafocs-crear-regla.cgi?vnom=$nom&id=$id'><button type='button'>REGLES FORWARD PROPIES</button></a>"
+                ;;
+            "DESCONNECTADA")
+                if [[ "$id" == "1" || "$id" == "2" ]]; then
+                    echo "<a href='tallafocs.cgi?comand=configurar&id=$id&accio=aillar&retorn=tallafocs-configuracio.cgi'><button type='button'>AÏLLAR FORWARD</button></a>"
+                else
+                    echo "<a href='tallafocs.cgi?comand=configurar&id=$id&accio=connectar&retorn=tallafocs-configuracio.cgi'><button type='button'>CONNECTAR FORWARD</button></a>"
+                    echo "<a href='tallafocs-crear-regla.cgi?vnom=$nom&id=$id'><button type='button'>REGLES FORWARD PROPIES</button></a>"
+                fi
+                ;;
+            "REGLES PROPIES")
+                echo "<a href='tallafocs.cgi?comand=configurar&id=$id&accio=desconnectar&retorn=tallafocs-configuracio.cgi'><button type='button'>DESCONECTAR FORWARD</button></a>"
+                echo "<a href='tallafocs.cgi?comand=configurar&id=$id&accio=connectar&retorn=tallafocs-configuracio.cgi'><button type='button'>CONNECTAR FORWARD</button></a>"
+                echo "<a href='tallafocs-crear-regla.cgi?vnom=$nom&id=$id'><button type='button'>REGLES FORWARD PROPIES</button></a>"
+                ;;
+            "AÏLLADA")
+                echo "<a href='tallafocs.cgi?comand=configurar&id=$id&accio=desconnectar&retorn=tallafocs-configuracio.cgi'><button type='button'>DESCONECTAR FORWARD</button></a>"
+                ;;
+        esac
 
-<div class="dashboard-grid" style="grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));">
-EOF
+    done
 
-for linia in $(grep -v '#' "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_CONF"); do
-    nom=$(echo "$linia"|cut -d';' -f1)
-    id=$(echo "$linia"|cut -d';' -f2)
-    ip=$(echo "$linia"|cut -d';' -f3)
-    estat_vlan=$("$DIR"/"$PROJECTE"/"$DIR_SCRIPTS"/client_srv_cli tallafocs estat $id)
-    
-    # Status styling
-    STATUS_CLASS="status-inactive"
-    STATUS_ICON="✗"
-    if [ "$estat_vlan" == "CONNECTADA" ]; then
-        STATUS_CLASS="status-active"
-        STATUS_ICON="✓"
-    fi
+    echo "<br>"
+    echo "<br>"
+    echo "<br>"
+    echo "<h2> FORWARD CONFIGURACIO MODES (s'apliquen en les regles propies de cada vlan)</h2>"
 
-    echo "<div class='card' style='box-shadow: none; border: 1px solid #eee; background: #f9f9f9;'>"
-    echo "  <div class='card-header' style='margin-bottom: 10px;'>"
-    echo "    <span style='font-weight: 600; font-size: 16px;'>$nom</span>"
-    echo "    <span class='card-status $STATUS_CLASS'>$STATUS_ICON $estat_vlan</span>"
-    echo "  </div>"
-    echo "  <div style='margin-bottom: 15px; color: #666; font-size: 13px;'>"
-    echo "    <strong>ID:</strong> $id &nbsp;|&nbsp; <strong>Subnet:</strong> $ip"
-    echo "  </div>"
-    
-    echo "  <div style='display: flex; gap: 8px; flex-wrap: wrap;'>"
-    if [ "$estat_vlan" == "CONNECTADA" ]; then
-        echo "    <a href='tallafocs-conndeconn.cgi?id=$id&accio=desconnectar' class='btn secondary' style='color: var(--danger-color); border-color: var(--danger-color); flex: 1; text-align: center;'>DESCONNECTAR</a>"
-        
-        # --- Aïllament Toggle (Only for Admin & DMZ) ---
-        SHOW_AISLAR=false
-        AISLAR_ACTIVE=false
-        
-        if [ "$nom" == "vlan_Admin" ]; then
-            SHOW_AISLAR=true
-            if [ "$AISLAR_VLAN_ADMIN" == "true" ]; then AISLAR_ACTIVE=true; fi
-        fi
-        if [ "$nom" == "vlan_DMZ" ]; then
-            SHOW_AISLAR=true
-            if [ "$AISLAR_VLAN_DMZ" == "true" ]; then AISLAR_ACTIVE=true; fi
-        fi
-        
-        if [ "$SHOW_AISLAR" == "true" ]; then
-            if [ "$AISLAR_ACTIVE" == "true" ]; then
-               echo "    <a href='tallafocs-conndeconn.cgi?id=$id&accio=desactivar_aislar' class='btn secondary' style='flex: 1; text-align: center; border-color: #f59f00; color: #f59f00;'>DESACTIVAR AÏLLAMENT</a>"
-            else
-               echo "    <a href='tallafocs-conndeconn.cgi?id=$id&accio=activar_aislar' class='btn secondary' style='flex: 1; text-align: center;'>ACTIVAR AÏLLAMENT</a>"
-            fi
-        fi
+    echo "<br>"
+    echo "<h3> mode ports_wls forward (ports acceptats)</h3>"
+    /bin/cat << EOM
+	<table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse;">
+	  <thead>
+	    <tr>
+	      <th>Protocol</th>
+	      <th>Port</th>
+	      <th></th>
+	    </tr>
+	  </thead>
+	  <tbody>
+EOM
 
-    else
-        echo "    <a href='tallafocs-conndeconn.cgi?id=$id&accio=connectar' class='btn' style='flex: 1; text-align: center;'>CONNECTAR</a>"
-        echo "    <a href='tallafocs-conndeconn.cgi?id=$id&accio=connectar_port_wls' class='btn secondary' style='flex: 1; text-align: center;'>LIMITAR PORTS</a>"
-    fi
-    echo "  </div>"
-    echo "</div>"
-done
-
-cat << EOF
-</div>
-
-<div class="dashboard-grid" style="grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 24px;">
-    <!-- Ports Whitelist -->
-    <div class="card" style="box-shadow: none; border: 1px solid #eee;">
-        <div class="card-header">
-            <h3 class="card-title" style="font-size: 18px;">Ports Permesos (WLS Whitelist)</h3>
-        </div>
-        <div class="card-body">
-            <table>
-                <thead>
-                    <tr>
-                        <th style="padding: 12px; border-bottom: 2px solid #eee;">Protocol</th>
-                        <th style="padding: 12px; border-bottom: 2px solid #eee;">Port</th>
-                        <th style="padding: 12px; border-bottom: 2px solid #eee;">Acció</th>
-                    </tr>
-                </thead>
-                <tbody>
-EOF
-
-while read linia; do
-    if [[ ! $linia =~ ^# ]] && [[ -n $linia ]]; then
-        proto=$(echo "$linia" | cut -d';' -f1)
-        port=$(echo "$linia" | cut -d';' -f2)
+    for linia in $(grep -v '#' "$DIR/$DIR_PROJECTE/$DIR_CONF/$IPTABLES_PORTS_WLS"); do
+        PROTOCOL=$(echo "$linia" | cut -d';' -f1)
+        PORT=$(echo "$linia" | cut -d';' -f2)
         echo "<tr>"
-        echo "  <td style='padding: 10px; border-bottom: 1px solid #eee; text-transform: uppercase; font-weight: 600; color: #1a73e8;'>$proto</td>"
-        echo "  <td style='padding: 10px; border-bottom: 1px solid #eee;'>$port</td>"
-        echo "  <td style='padding: 10px; border-bottom: 1px solid #eee;'><a href='tallafocs-ports.cgi?accio=eliminar&protocol=$proto&port=$port' class='btn secondary' style='padding: 4px 8px; font-size: 12px; color: #d93025; border-color: #d93025;'>Eliminar</a></td>"
+        echo "<td>$PROTOCOL</td>"
+        echo "<td>$PORT</td>"
+        echo "<td>"
+        echo "<a href='tallafocs.cgi?comand=configurar&accio=eliminar_port_wls&protocol=$PROTOCOL&port=$PORT&retorn=tallafocs-configuracio.cgi'><button type='button'>Eliminar</button></a>"
+        echo "</td>"
         echo "</tr>"
-    fi
-done < "$DIR/$PROJECTE/$DIR_CONF/$PORTS_WLS"
+    done
+    echo "</tbody>"
+    echo "</table>"
+    echo "<a href='tallafocs-nova-port.cgi?accio=afegir_port_wls'><button type='button'>Afegir port</button></a>"
 
-cat << EOF
-                </tbody>
-            </table>
-            <div style="margin-top: 16px;">
-                <a href="tallafocs-ports.cgi" class="btn" style="width: 100%; display: block; text-align: center; text-decoration: none;">Gestionar Ports</a>
-            </div>
-        </div>
-    </div>
+    echo "<br>"
+    echo "<br>"
 
-    <!-- IPs Whitelist -->
-    <div class="card" style="box-shadow: none; border: 1px solid #eee;">
-        <div class="card-header">
-            <h3 class="card-title" style="font-size: 18px;">IPs sense restriccions</h3>
-        </div>
-        <div class="card-body">
-            <table>
-                <thead>
-                    <tr>
-                        <th style="padding: 12px; border-bottom: 2px solid #eee;">VID</th>
-                        <th style="padding: 12px; border-bottom: 2px solid #eee;">IP</th>
-                        <th style="padding: 12px; border-bottom: 2px solid #eee;">MAC</th>
-                        <th style="padding: 12px; border-bottom: 2px solid #eee;">Acció</th>
-                    </tr>
-                </thead>
-                <tbody>
-EOF
+    echo "<br>"
+    echo "<h3> mode dominis_wls forward (dominis o ips acceptades)</h3>"
+    /bin/cat << EOM
+	<table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse;">
+	  <thead>
+	    <tr>
+	      <th>Domini</th>
+	      <th></th>
+	    </tr>
+	  </thead>
+	  <tbody>
+EOM
 
-while read linia; do
-    if [[ ! $linia =~ ^# ]] && [[ -n $linia ]]; then
-        vid=$(echo "$linia" | cut -d';' -f1)
-        ip=$(echo "$linia" | cut -d';' -f2)
-        mac=$(echo "$linia" | cut -d';' -f3)
+    for linia in $(grep -v '#' "$DIR/$DIR_PROJECTE/$DIR_CONF/$IPTABLES_DOMINIS_WLS"); do
+        DOMINI=$(echo "$linia" | cut -d';' -f1)
         echo "<tr>"
-        echo "  <td style='padding: 10px; border-bottom: 1px solid #eee;'>$vid</td>"
-        echo "  <td style='padding: 10px; border-bottom: 1px solid #eee; font-family: monospace;'>$ip</td>"
-        echo "  <td style='padding: 10px; border-bottom: 1px solid #eee; font-family: monospace; font-size: 11px; color: #666;'>$mac</td>"
-        echo "  <td style='padding: 10px; border-bottom: 1px solid #eee;'><a href='tallafocs-ips.cgi?accio=eliminar&vid=$vid&ip=$ip&mac=$mac' class='btn secondary' style='padding: 4px 8px; font-size: 12px; color: #d93025; border-color: #d93025;'>Eliminar</a></td>"
+        echo "<td>$DOMINI</td>"
+        echo "<td>"
+        echo "<a href='tallafocs.cgi?comand=configurar&accio=eliminar_dominis_wls&domini=$DOMINI&retorn=tallafocs-configuracio.cgi'><button type='button'>Eliminar</button></a>"
+        echo "</td>"
         echo "</tr>"
-    fi
-done < "$DIR/$PROJECTE/$DIR_CONF/$IPS_WLS"
+    done
+    echo "</tbody>"
+    echo "</table>"
+    echo "<a href='tallafocs-nova-domini.cgi?accio=afegir_dominis_wls'><button type='button'>Afegir domini</button></a>"
 
-cat << EOF
-                </tbody>
-            </table>
-            <div style="margin-top: 16px;">
-                <a href="tallafocs-ips.cgi" class="btn" style="width: 100%; display: block; text-align: center; text-decoration: none;">Gestionar IPs</a>
-            </div>
-        </div>
-    </div>
-</div>
+    echo "<br>"
+    echo "<br>"
 
-<div style="margin-top: 24px; text-align: right;">
-    <a href="/cgi-bin/tallafocs.cgi" class="btn secondary">Tornar al Tallafocs</a>
-</div>
+ echo "<br>"
+    echo "<h3> mode ports_bls forward (ports bloquejats)</h3>"
+    /bin/cat << EOM
+	<table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse;">
+	  <thead>
+	    <tr>
+	      <th>Protocol</th>
+	      <th>Port</th>
+	      <th></th>
+	    </tr>
+	  </thead>
+	  <tbody>
+EOM
 
-        </div>
-    </div>
-</div>
-</body>
-</html>
-EOF
+    for linia in $(grep -v '#' "$DIR/$DIR_PROJECTE/$DIR_CONF/$IPTABLES_PORTS_BLS"); do
+        PROTOCOL=$(echo "$linia" | cut -d';' -f1)
+        PORT=$(echo "$linia" | cut -d';' -f2)
+        echo "<tr>"
+        echo "<td>$PROTOCOL</td>"
+        echo "<td>$PORT</td>"
+        echo "<td>"
+        echo "<a href='tallafocs.cgi?comand=configurar&accio=eliminar_port_bls&protocol=$PROTOCOL&port=$PORT&retorn=tallafocs-configuracio.cgi'><button type='button'>Eliminar</button></a>"
+        echo "</td>"
+        echo "</tr>"
+    done
+    echo "</tbody>"
+    echo "</table>"
+    echo "<a href='tallafocs-nova-port.cgi?accio=afegir_port_bls'><button type='button'>Afegir port</button></a>"
+
+    echo "<br>"
+    echo "<br>"
+
+    echo "<br>"
+    echo "<h3> mode dominis_bls forward (dominis o ips bloquejades)</h3>"
+    /bin/cat << EOM
+	<table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse;">
+	  <thead>
+	    <tr>
+	      <th>Domini</th>
+	      <th></th>
+	    </tr>
+	  </thead>
+	  <tbody>
+EOM
+
+    for linia in $(grep -v '#' "$DIR/$DIR_PROJECTE/$DIR_CONF/$IPTABLES_DOMINIS_BLS"); do
+        DOMINI=$(echo "$linia" | cut -d';' -f1)
+        echo "<tr>"
+        echo "<td>$DOMINI</td>"
+        echo "<td>"
+        echo "<a href='tallafocs.cgi?comand=configurar&accio=eliminar_dominis_bls&domini=$DOMINI&retorn=tallafocs-configuracio.cgi'><button type='button'>Eliminar</button></a>"
+        echo "</td>"
+        echo "</tr>"
+    done
+    echo "</tbody>"
+    echo "</table>"
+    echo "<a href='tallafocs-nova-domini.cgi?accio=afegir_dominis_bls'><button type='button'>Afegir domini</button></a>"
+
+    echo "<br>"
+    echo "<br>"
+
+else
+    echo "<h2> </h2>"
+    echo "<h3>TALLAFOCS NO INICIAT</h3>"
+fi
+/bin/cat << EOM
+	</body>
+	</html>
+EOM
