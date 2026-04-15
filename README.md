@@ -147,3 +147,40 @@ Si se advierte ataque o tráfico ilegal a través de una VLAN, la interfaz prove
 ---
 
 Para más detalles lógicos detallados, revisar el documento auxiliar **[PRD.md](PRD.md)** presente en este repositorio.
+
+---
+
+## 🌿 Ramas del Repositorio
+
+Este repositorio mantiene múltiples ramas con propósitos diferentes:
+
+| Rama | Propósito |
+|---|---|
+| `main` ⬅ | Versión de producción modernizada. Dashboard industrial con Tailwind CSS, Chart.js, telemetría real en tiempo real (`metricas_api.cgi`) y mejoras de UX. |
+| [`Vulnerable`](https://github.com/pabloogonzalez/JSBach/tree/Vulnerable) | Entorno de laboratorio de ciberseguridad. Versión original del profesor con vulnerabilidades intencionadas para prácticas de pentesting. |
+| `v2` | Rama de desarrollo alternativa. |
+
+---
+
+## 🔐 Rama `Vulnerable` — Laboratorio de Ciberseguridad
+
+> ⚠️ **Esta rama contiene vulnerabilidades intencionadas. Únicamente para uso en entornos controlados.**
+
+La rama [`Vulnerable`](https://github.com/pabloogonzalez/JSBach/tree/Vulnerable) es una versión del código base del profesor **sin ningún parche de seguridad aplicado**, diseñada específicamente como **diana de entrenamiento** para:
+
+- Penetration Testing con herramientas como **Burp Suite** y **OWASP ZAP**
+- Análisis de tráfico HTTP
+- Práctica de explotación del **OWASP Top 10**
+- Comparación de código vulnerable vs. código seguro
+
+### Vulnerabilidades documentadas en esa rama
+
+| Severidad | Nº | Ejemplos |
+|---|---|---|
+| 🔴 Crítica | 3 | Sin autenticación web, claves WireGuard en texto claro, contraseñas en claro |
+| 🟠 Alta | 5 | OS Argument Injection, Reflected XSS, Path Traversal, Open Redirect |
+| 🟡 Media | 4 | Socket TCP sin auth, CSRF (GET en formularios), contraseñas visibles en HTML |
+| 🟢 Baja | 2 | Headers HTTP ausentes, CDN sin SRI |
+
+📄 El README completo de la rama `Vulnerable` con ejercicios propuestos, herramientas recomendadas y guía de instalación del lab está disponible aquí:
+**[→ Ver README del Laboratorio de Seguridad](https://github.com/pabloogonzalez/JSBach/blob/Vulnerable/README.md)**
